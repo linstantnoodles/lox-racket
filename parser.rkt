@@ -2,11 +2,11 @@
 #lang racket
 
 (require "scanner.rkt")
+(provide parse)
 
 (define (binary-exp exp-left operator exp-right)
   (list 'BINARY_EXP exp-left operator exp-right)
 )
-
 (define (group-exp exp)
   (list 'GROUP_EXP exp))
 
@@ -20,7 +20,7 @@
     (make-token 'NUMBER 7 null 1)
     (make-token 'EQUAL_EQUAL "==" null 1)
     (make-token 'NUMBER 7 null 1)
-    ))
+))
 
 ; how does lambda call itself?
 ; (define (seq-op-creator token-types)
@@ -36,9 +36,18 @@
 ;                        (recur rest-token-list (binary-exp curr-expr operator right)))))
 ;             (recur rest-token-list expr))))
 
+(define DEBUG #f)
+(define (debug msg)
+  (if DEBUG (println msg) '()))
+
+(define (parse expr)
+  (let ([token-list (scan expr)])
+    (let-values ([(expr rest-token-list) (expression token-list)])
+      expr)))
+
 ; expression     → equality ;
 (define (expression token-list)
-    (println "expresson")
+    (debug "expresson")
     (let-values ([(expr rest-token-list) (equality token-list)])
       (values expr rest-token-list)))
 
@@ -57,8 +66,8 @@
 
 ; comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
 (define (comparison token-list)
-    (println "comparison")
-    (println token-list)
+    (debug "comparison")
+    (debug token-list)
     (let-values ([(expr rest-token-list) (term token-list)])
         (define (recur token-list curr-expr)
             (if (not (match token-list (list 'LESS 'GREATER 'LESS_EQUAL 'GREATER_EQUAL)))
@@ -72,8 +81,8 @@
 
 ; term           → factor ( ( "-" | "+" ) factor )* ;
 (define (term token-list)
-    (println "-term")
-    (println token-list)
+    (debug "-term")
+    (debug token-list)
     (let-values ([(expr rest-token-list) (factor token-list)])
         (define (recur token-list curr-expr)
             (if (not (match token-list (list 'MINUS 'PLUS)))
@@ -100,9 +109,9 @@
 
 ; unary          → ( "!" | "-" ) unary | primary ;
 (define (unary token-list)
-  (println "unary")
-  (println token-list)
-  (println "---")
+  (debug "unary")
+  (debug token-list)
+  (debug "---")
   (if (match token-list (list 'MINUS 'BANG))
     (let-values (
         [(operator) (car token-list)]
@@ -120,9 +129,9 @@
 
 ; primary        → NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" ;
 (define (primary token-list)
-  (println "primary")
-  (println token-list)
-  (println "---")
+  (debug "primary")
+  (debug token-list)
+  (debug "---")
   (cond 
     [(match token-list (list 'FALSE)) (values (literal-exp #f) (cdr token-list))]
     [(match token-list (list 'TRUE)) (values (literal-exp #t) (cdr token-list))]
@@ -139,43 +148,6 @@
     (if (empty? token-list)
       #false
       (if (member (caar token-list) token-types) #t #f)))
-
-; since we're constructing a tree
-; everything is returning both an
-; expression TREE AND the new
-; next position of the token list
-; (define (parse token-list)
-;   (define (at-end pos) (>= pos (length token-list)))
-;   (define (get-token-type token)
-;     (cadr token))
-;   (define (recur curr-expr curr-pos)
-;     (define (match expr token-types)
-;       (if (empty? token-types)))
-
-;     (define (check token-type) 
-;         (equal? (get-token-type (list-ref token-list curr-pos)) token-type))
-;     (define (expression) (equality))
-;     (define (equality) 
-;       (let ([expr (comparison)]) expr)
-;     )
-;     (define (comparison) (term))
-;     (define (term) (factor))
-;     (define (factor) (unary))
-;     (define (unary)
-;       (if (match (list 'MINUS 'PLUS))
-;       (unary-exp "-" 5)
-;     )
-
-;     (if (at-end curr-pos) curr-expr (expression))
-;   )
-
-;   (recur '() 0)
-; )
-
-; (parse value)
-
-
-; testing match token
 
 
 ; match tests
@@ -217,11 +189,11 @@
 ; expression
 ; bug - the issue is that our match doesn't work per spec
 ; match should only match values in SEQUENCE. instead we're doing a membership check
-(expression (list 
-    (make-token 'LEFT_PAREN "(" null 1)
-    (make-token 'NUMBER '5' 5 1)
-    (make-token 'MINUS '-' null 1)
-    (make-token 'NUMBER '5' 5 1)
-    (make-token 'RIGHT_PAREN ")" null 1)
-    ))
+; (expression (list 
+;     (make-token 'LEFT_PAREN "(" null 1)
+;     (make-token 'NUMBER '5' 5 1)
+;     (make-token 'MINUS '-' null 1)
+;     (make-token 'NUMBER '5' 5 1)
+;     (make-token 'RIGHT_PAREN ")" null 1)
+;     ))
 

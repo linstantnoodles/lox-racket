@@ -4,6 +4,10 @@
 (provide scan)
 (provide make-token)
 
+; (car token) -> type
+; (cadr token) -> text
+; (caddr token) -> literal
+; (cadddr token) -> line
 (define (make-token type text literal line)
   (list type text literal line)
 )
