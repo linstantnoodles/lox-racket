@@ -16,15 +16,18 @@
   )
   (define (evaluate-binary exp)
     (let (
-          [binary-exp-left (cadr exp)]
+          [binary-value-left (recur (cadr exp))]
           [operator-type (caaddr exp)]
-          [binary-exp-right (cadddr exp)]
+          [binary-value-right (recur (cadddr exp))]
          )
       (cond 
-        [(equal? operator-type 'PLUS) (+ (recur binary-exp-left) (recur binary-exp-right))]
-        [(equal? operator-type 'MINUS) (- (recur binary-exp-left) (recur binary-exp-right))]
-        [(equal? operator-type 'STAR) (* (recur binary-exp-left) (recur binary-exp-right))]
-        [(equal? operator-type 'SLASH) (/ (recur binary-exp-left) (recur binary-exp-right))]
+        [(equal? operator-type 'PLUS)
+         (if (and (string? binary-value-left) (string? binary-value-right))
+            (string-append binary-value-left binary-value-right)
+            (+ binary-value-left binary-value-right))]
+        [(equal? operator-type 'MINUS) (- binary-value-left binary-value-right)]
+        [(equal? operator-type 'STAR) (* binary-value-left binary-value-right)]
+        [(equal? operator-type 'SLASH) (/ binary-value-left binary-value-right)]
         [else (raise ("Unrecognized binary operator"))]))
   )
   (define (recur exp)
@@ -42,3 +45,5 @@
 (interpret "(-(1+1))")
 (interpret "(-(2+1))")
 (interpret "(-(2*5))")
+(interpret "(1 + 1)")
+(interpret "(\"wow\" + \"hey\")")

@@ -36,7 +36,7 @@
   (define (recur start current line tokens) 
     (define (add-token type shift) (recur start (+ shift current) line (cons (make-token type '() '() line) tokens)))
     (define (skip shift line) (recur start (+ shift current) line tokens))
-    (define (add-string-token value shift) (recur start (+ shift current) line (cons (make-token 'STRING value '() line) tokens)))
+    (define (add-string-token value shift) (recur start (+ shift current) line (cons (make-token 'STRING value value line) tokens)))
     (define (add-number-token value shift)
         (recur
           start
