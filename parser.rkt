@@ -16,6 +16,12 @@
 (define (literal-exp exp)
   (list 'LITERAL_EXP exp))
 
+(define (statement-exp exp)
+  (list 'STATEMENT_EXP exp))
+
+(define (expression-exp exp)
+  (list 'EXPRESSION_EXP exp))
+
 (define value (list 
     (make-token 'NUMBER 7 null 1)
     (make-token 'EQUAL_EQUAL "==" null 1)
@@ -44,6 +50,21 @@
   (let ([token-list (scan expr)])
     (let-values ([(expr rest-token-list) (expression token-list)])
       expr)))
+
+(define (statement token-list)
+    (if (match token-list (list 'PRINT))
+      (print-statement (cdr token-list))
+      (expression-statement token-list)))
+
+(define (print-statement token-list)
+    (let-values ([(expr rest-token-list) (expression token-list)])
+        (let ([rest-token-list (consume 'SEMICOLON rest-token-list "expect ; after expression")])
+                                                        (values (statement-exp expr) rest-token-list))))
+
+(define (expression-statement token-list)
+    (let-values ([(expr rest-token-list) (expression token-list)])
+        (let ([rest-token-list (consume 'SEMICOLON rest-token-list "expect ; after expression")])
+                                                        (values (expression-exp expr) rest-token-list))))
 
 ; expression     → equality ;
 (define (expression token-list)
@@ -199,3 +220,8 @@
 
 #| (expression (list (make-token 'STRING 'wowofsdf' 'wowowd' 1))) |#
 
+(statement (list 
+     (make-token 'PRINT 'print' 5 1)
+     (make-token 'NUMBER '5' 5 1)
+     (make-token 'SEMICOLON ";" 1 1)
+))
