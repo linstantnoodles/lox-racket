@@ -3,6 +3,10 @@
 
 (provide scan)
 (provide make-token)
+(provide get-token-type)
+(provide get-token-lexeme)
+(provide get-token-literal)
+(provide get-token-line)
 
 ; (car token) -> type
 ; (cadr token) -> text
@@ -11,6 +15,10 @@
 (define (make-token type text literal line)
   (list type text literal line)
 )
+(define (get-token-type token) (car token))
+(define (get-token-lexeme token) (cadr token))
+(define (get-token-literal token) (caddr token))
+(define (get-token-line token) (cadddr))
 
 (define (scan source)
   (define (at-end current) (>= current (string-length source)))
@@ -51,7 +59,7 @@
         (if 
             (hash-has-key? keywords value) 
             (cons (make-token (hash-ref keywords value) value '() line) tokens)
-            (cons (make-token 'IDENTIFIER value '() line) tokens)
+            (cons (make-token 'IDENTIFIER value value line) tokens)
         )
       )
     )

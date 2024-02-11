@@ -16,11 +16,17 @@
 (define (literal-exp exp)
   (list 'LITERAL_EXP exp))
 
+(define (variable-exp exp)
+  (list 'VARIABLE_EXP exp))
+
+(define (statement-print exp)
+  (list 'STATEMENT_PRINT exp))
+
 (define (statement-exp exp)
   (list 'STATEMENT_EXP exp))
 
-(define (expression-exp exp)
-  (list 'EXPRESSION_EXP exp))
+(define (statement-var name initializer) 
+  (list 'STATEMENT_VAR name initializer))
 
 (define value (list 
     (make-token 'NUMBER 7 null 1)
@@ -46,10 +52,33 @@
 (define (debug msg)
   (if DEBUG (println msg) '()))
 
-(define (parse expr)
-  (let ([token-list (scan expr)])
-    (let-values ([(expr rest-token-list) (expression token-list)])
-      expr)))
+(define (parse src)
+    (define (recur token-list)
+      (if (empty? token-list) 
+        '()
+        (let-values ([
+            (declaration-value rest-token-list) (declaration token-list)
+        ])
+          (cons declaration-value (recur rest-token-list)))))
+    (let ([token-list (scan src)]) (recur token-list)))
+
+(define (declaration token-list)
+  (if (match token-list (list 'VAR))
+      (var-declaration (cdr token-list))
+      (statement token-list)))
+
+(define (var-declaration token-list)
+    (let (
+          [rest-token-list (consume 'IDENTIFIER token-list "expect a variable name")]
+          [name (car token-list)]
+         )
+        (if (match rest-token-list (list 'EQUAL))
+            (let-values ([(initializer rest-token-list) (expression (cdr rest-token-list))])
+                (let ([rest-token-list (consume 'SEMICOLON rest-token-list "expect ; after variable decl")])
+                    (values (statement-var name initializer) rest-token-list)))
+            (let ([rest-token-list (consume 'SEMICOLON rest-token-list "expect ; after variable initialization")])
+              (values (statement-var name '()) rest-token-list))
+        )))
 
 (define (statement token-list)
     (if (match token-list (list 'PRINT))
@@ -59,12 +88,12 @@
 (define (print-statement token-list)
     (let-values ([(expr rest-token-list) (expression token-list)])
         (let ([rest-token-list (consume 'SEMICOLON rest-token-list "expect ; after expression")])
-                                                        (values (statement-exp expr) rest-token-list))))
+                                                        (values (statement-print expr) rest-token-list))))
 
 (define (expression-statement token-list)
     (let-values ([(expr rest-token-list) (expression token-list)])
         (let ([rest-token-list (consume 'SEMICOLON rest-token-list "expect ; after expression")])
-                                                        (values (expression-exp expr) rest-token-list))))
+                                                        (values (statement-exp expr) rest-token-list))))
 
 ; expression     → equality ;
 (define (expression token-list)
@@ -158,6 +187,7 @@
     [(match token-list (list 'TRUE)) (values (literal-exp #t) (cdr token-list))]
     [(match token-list (list 'NIL)) (values (literal-exp '()) (cdr token-list))]
     [(match token-list (list 'NUMBER 'STRING)) (values (literal-exp (caddr (car token-list))) (cdr token-list))]
+    [(match token-list (list 'IDENTIFIER)) (values (variable-exp (caddr (car token-list))) (cdr token-list))]
     [(match token-list (list 'LEFT_PAREN)) (let-values ([(expr rest-token-list) (expression (cdr token-list))])
                                                      (let ([rest-token-list (consume 'RIGHT_PAREN rest-token-list "expect ) after expression")])
                                                         (values (group-exp expr) rest-token-list)))]
@@ -220,8 +250,10 @@
 
 #| (expression (list (make-token 'STRING 'wowofsdf' 'wowowd' 1))) |#
 
-(statement (list 
-     (make-token 'PRINT 'print' 5 1)
-     (make-token 'NUMBER '5' 5 1)
-     (make-token 'SEMICOLON ";" 1 1)
-))
+;(statement (list 
+;     (make-token 'PRINT 'print' 5 1)
+;     (make-token 'NUMBER '5' 5 1)
+;     (make-token 'SEMICOLON ";" 1 1)
+;))
+
+; (parse "x + x;")
