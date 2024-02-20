@@ -3,6 +3,7 @@
 
 (require "scanner.rkt")
 (provide parse)
+(provide block)
 
 (define (binary-exp exp-left operator exp-right)
   (list 'BINARY_EXP exp-left operator exp-right)
@@ -18,6 +19,9 @@
 
 (define (variable-exp exp)
   (list 'VARIABLE_EXP exp))
+
+(define (assignment-exp name value)
+  (list 'ASSIGNMENT_EXP name value))
 
 (define (statement-print exp)
   (list 'STATEMENT_PRINT exp))
@@ -59,7 +63,8 @@
         (let-values ([
             (declaration-value rest-token-list) (declaration token-list)
         ])
-          (cons declaration-value (recur rest-token-list)))))
+            (cons declaration-value (recur rest-token-list))
+            )))
     (let ([token-list (scan src)]) (recur token-list)))
 
 (define (declaration token-list)
@@ -83,7 +88,22 @@
 (define (statement token-list)
     (if (match token-list (list 'PRINT))
       (print-statement (cdr token-list))
-      (expression-statement token-list)))
+      (if (match token-list (list 'LEFT_BRACE))
+        (block (cdr token-list))
+        (expression-statement token-list))))
+
+(define (block token-list)
+  (define (at-end token-list) (<= (length token-list) 0))
+
+  (define (recur statements token-list)
+    (if (or (match token-list (list 'RIGHT_BRACE)) (at-end token-list))
+      (values statements token-list)
+      (let-values ([(expr rest-token-list) (declaration token-list)])
+        (recur (append (list expr) statements) rest-token-list))))
+
+  (let-values ([(statement-list rest-token-list) (recur '() token-list)])
+      (let ([rest-token-list (consume 'RIGHT_BRACE rest-token-list "expectesd } after block")])
+      (values statement-list rest-token-list))))
 
 (define (print-statement token-list)
     (let-values ([(expr rest-token-list) (expression token-list)])
@@ -97,9 +117,18 @@
 
 ; expression     → equality ;
 (define (expression token-list)
-    (debug "expresson")
-    (let-values ([(expr rest-token-list) (equality token-list)])
+    (debug "expression")
+    (let-values ([(expr rest-token-list) (assignment token-list)])
       (values expr rest-token-list)))
+
+(define (assignment token-list)
+    (let-values ([(expr rest-token-list) (equality token-list)])
+      (if (match rest-token-list (list 'EQUAL))
+        (let-values ([(value rest-token-list) (assignment (cdr rest-token-list))])
+          (if (eq? (car expr) 'VARIABLE_EXP)
+            (values (assignment-exp (cadr expr) value) rest-token-list)
+            (raise "invalid assignment target.")))
+        (values expr rest-token-list))))
 
 ; equality       → comparison ( ( "!=" | "==" ) comparison )* ;
 (define (equality token-list)

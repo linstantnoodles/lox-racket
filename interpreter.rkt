@@ -37,6 +37,11 @@
         (hash-set! envr name '())
         (hash-set! envr name (evaluate initializer)))))
 
+(define (evaluate-assignment exp)
+  (let ([name (cadr exp)]
+        [value (caddr exp)])
+      (hash-set! envr name (evaluate value))))
+
   (define (evaluate-binary exp)
     (let (
           [binary-value-left (evaluate (cadr exp))]
@@ -59,6 +64,7 @@
           [(equal? type 'STATEMENT_PRINT) (evaluate-statement-print exp)]
           [(equal? type 'STATEMENT_EXP) (evaluate-statement-exp exp)]
           [(equal? type 'STATEMENT_VAR) (evaluate-statement-var exp)]
+          [(equal? type 'ASSIGNMENT_EXP) (evaluate-assignment exp)]
           [(equal? type 'VARIABLE_EXP) (evaluate-variable exp)]
           [(equal? type 'LITERAL_EXP) (evaluate-literal exp)]
           [(equal? type 'GROUP_EXP) (evaluate (cadr exp))]
@@ -81,8 +87,8 @@
 )
 
 ;(interpret "(-(1+1))")
-;(interpret "(-(2+1))")
+;(interpret "(-(2+1))"):w
 ;(interpret "(-(2*5))")
 ;(interpret "(1 + 1)")
 ;(interpret "(\"wow\" + \"hey\")")
-(interpret "var k = 5 + 1; print k;")
+; (interpret "var k = 5 + 1; k = 2; print k;")
