@@ -26,8 +26,12 @@
 (define (statement-print exp)
   (list 'STATEMENT_PRINT exp))
 
+(define (statement-block exp)
+  (list 'STATEMENT_BLOCK exp))
+
 (define (statement-exp exp)
   (list 'STATEMENT_EXP exp))
+  
 
 (define (statement-var name initializer) 
   (list 'STATEMENT_VAR name initializer))
@@ -99,11 +103,11 @@
     (if (or (match token-list (list 'RIGHT_BRACE)) (at-end token-list))
       (values statements token-list)
       (let-values ([(expr rest-token-list) (declaration token-list)])
-        (recur (append (list expr) statements) rest-token-list))))
+        (recur (append statements (list expr)) rest-token-list))))
 
   (let-values ([(statement-list rest-token-list) (recur '() token-list)])
       (let ([rest-token-list (consume 'RIGHT_BRACE rest-token-list "expectesd } after block")])
-      (values statement-list rest-token-list))))
+      (values (statement-block statement-list) rest-token-list))))
 
 (define (print-statement token-list)
     (let-values ([(expr rest-token-list) (expression token-list)])

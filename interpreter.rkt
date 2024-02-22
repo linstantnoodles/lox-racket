@@ -20,10 +20,19 @@
         [else (raise ("Unrecognized unary operator"))]))
   )
 
+  (define (evaluate-statement-block exp)
+    (define (recur statement-list) 
+      (if (> (length statement-list) 0)
+        (begin
+          (evaluate (car statement-list))
+          (recur (cdr statement-list))
+        ) '()))
+    (recur (cadr exp)))
+
   (define (evaluate-statement-print exp)
     (let ([value (evaluate (cadr exp))])
       (println value)))
-
+      
   (define (evaluate-statement-exp exp)
     (let ([value (evaluate (cadr exp))])
       (void)))
@@ -60,7 +69,8 @@
   
   (define (evaluate exp)
       (let ([type (car exp)])
-        (cond 
+        (cond
+          [(equal? type 'STATEMENT_BLOCK) (evaluate-statement-block exp)] 
           [(equal? type 'STATEMENT_PRINT) (evaluate-statement-print exp)]
           [(equal? type 'STATEMENT_EXP) (evaluate-statement-exp exp)]
           [(equal? type 'STATEMENT_VAR) (evaluate-statement-var exp)]
