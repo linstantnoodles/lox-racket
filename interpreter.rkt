@@ -6,7 +6,15 @@
 (provide interpret)
 
 (define (interpret src) 
-  (define envr (make-hash))
+  (define (make-env [parent '()])
+    (list (make-hash) parent))
+  (define (env-set! env key value)
+    (let ([hash (car env)])
+      (hash-set! hash key value)))
+  (define (env-get env key)
+    (let ([hash (car env)])
+      (hash-ref hash key)))
+  (define envr (make-env))
 
   (define (evaluate-literal exp) (cadr exp))
 
@@ -37,19 +45,20 @@
     (let ([value (evaluate (cadr exp))])
       (void)))
 
-  (define (evaluate-variable exp) (hash-ref envr (cadr exp)))
+  (define (evaluate-variable exp) (env-get envr (cadr exp)))
 
   (define (evaluate-statement-var exp)
     (let ([name (get-token-lexeme (cadr exp))]
           [initializer (caddr exp)])
       (if (empty? initializer)
-        (hash-set! envr name '())
-        (hash-set! envr name (evaluate initializer)))))
+
+        (env-set! envr name '())
+        (env-set! envr name (evaluate initializer)))))
 
 (define (evaluate-assignment exp)
   (let ([name (cadr exp)]
         [value (caddr exp)])
-      (hash-set! envr name (evaluate value))))
+      (env-set! envr name (evaluate value))))
 
   (define (evaluate-binary exp)
     (let (
