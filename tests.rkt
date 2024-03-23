@@ -29,6 +29,7 @@
     ;   ) 
     ;   )
 ))
+
 (define (test-interpreter)
   (begin
     (interpret "(-(1+1));")
@@ -38,6 +39,10 @@
     (interpret "(\"wow\" + \"hey\");")
     (interpret "var k = 5 + 1; k = 2; print k;")
     (interpret "{1+1;} {var x = 7; print x;}")
+    ; assignment should not be allowed to create a new variable
+    ; (interpret "{x = 7; print x;}")
+    (interpret "var global = 1; { var local = 2; print global + local; }")
+    (interpret "var a = \"global a\"; var b = \"global b\"; var c = \"global c\"; {var a = \"outer a\"; var b = \"outer b\"; {var a = \"inner a\"; print a; print b; print c; } print a; print b; print c; } print a; print b; print c;")
   )
 )
 

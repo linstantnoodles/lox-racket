@@ -18,7 +18,7 @@
 (define (get-token-type token) (car token))
 (define (get-token-lexeme token) (cadr token))
 (define (get-token-literal token) (caddr token))
-(define (get-token-line token) (cadddr))
+(define (get-token-line token) (cadddr token))
 
 (define (scan source)
   (define (at-end current) (>= current (string-length source)))

@@ -203,12 +203,19 @@
         (values (unary-exp operator right-expr) rest-token-list))
     (primary token-list)))
 
+; reports the wrong line number... currently the line AFTER
+; the bad token
 (define (consume token-type token-list error-message)
   (if (empty? token-list)
     (raise (cons "no tokens to consumed" error-message))
-    (if (equal? token-type (car (car token-list)))
-        (cdr token-list)
-        (raise error-message))))
+    (let ([next-token (car token-list)])
+      (if (equal? token-type (car next-token))
+          (cdr token-list)
+          (raise 
+            (string-join
+              (list
+                "line"
+                (number->string (get-token-line next-token)) ":" error-message)))))))
 
 ; primary        → NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" ;
 (define (primary token-list)

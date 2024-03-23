@@ -2,13 +2,12 @@
 #lang racket
 
 (require "scanner.rkt")
+(require "interpreter.rkt")
 
 (define (file-contents filename) (port->string (open-input-file filename) #:close? #t))
 
 (define (run source)
-  (let ([chars (scan source)])
-    (for ([char (in-list chars)])
-      (displayln char)))
+  (interpret source)
 )
 
 (define (report line where message)
