@@ -31,10 +31,12 @@
 
 (define (statement-exp exp)
   (list 'STATEMENT_EXP exp))
-  
 
 (define (statement-var name initializer) 
   (list 'STATEMENT_VAR name initializer))
+
+(define (statement-if condition then-branch else-branch) 
+  (list 'STATEMENT_IF condition then-branch else-branch))
 
 (define value (list 
     (make-token 'NUMBER 7 null 1)
@@ -56,7 +58,7 @@
 ;                        (recur rest-token-list (binary-exp curr-expr operator right)))))
 ;             (recur rest-token-list expr))))
 
-(define DEBUG #f)
+(define DEBUG #t)
 (define (debug msg)
   (if DEBUG (println msg) '()))
 
@@ -92,10 +94,22 @@
 (define (statement token-list)
     (if (match token-list (list 'PRINT))
       (print-statement (cdr token-list))
-      (if (match token-list (list 'LEFT_BRACE))
-        (block (cdr token-list))
-        (expression-statement token-list))))
+      (if (match token-list (list 'IF))
+        (if-statement (cdr token-list))
+        (if (match token-list (list 'LEFT_BRACE))
+          (block (cdr token-list))
+          (expression-statement token-list)))))
 
+(define (if-statement token-list) 
+  (let ([rest-token-list (consume 'LEFT_PAREN token-list "expect '(' after if")])
+    (let-values ([(condition rest-token-list) (expression rest-token-list)])
+      (let ([rest-token-list (consume 'RIGHT_PAREN rest-token-list "expect ')' after if")])
+        (let-values ([(then-branch rest-token-list) (statement rest-token-list)])
+          (if (match rest-token-list (list 'ELSE))
+            (let-values ([(else-branch rest-token-list) (statement (cdr rest-token-list))])
+              (values (statement-if condition then-branch else-branch) rest-token-list))
+            (values (statement-if condition then-branch '()) rest-token-list)))))))
+              
 (define (block token-list)
   (define (at-end token-list) (<= (length token-list) 0))
 
@@ -239,7 +253,6 @@
     (if (empty? token-list)
       #false
       (if (member (caar token-list) token-types) #t #f)))
-
 
 ; match tests
 ; (match value (list 'EQUAL_EQUAL))

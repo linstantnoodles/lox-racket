@@ -41,6 +41,7 @@
     (hash-set! keywords "var" 'VAR)
     (hash-set! keywords "while" 'WHILE)
   )
+  
   (define (recur start current line tokens) 
     (define (add-token type shift) (recur start (+ shift current) line (cons (make-token type '() '() line) tokens)))
     (define (skip shift line) (recur start (+ shift current) line tokens))
@@ -72,9 +73,12 @@
          (add-string-token (substring source start end) (+ 1 (- end start))))
     )
     (define (add-number start)
-       (define (iter-add-number end)
-         (define (next-char)
-            (if (at-end (+ 1 end)) '() (string-ref source (+ 1 end))))
+        (define (iter-add-number end)
+        (define (next-char)
+          (if
+            (at-end (+ 1 end))
+            '()
+            (string-ref source (+ 1 end))))
          (if 
            (or
              (at-end end)

@@ -38,6 +38,15 @@
         [else (raise ("Unrecognized unary operator"))]))
   )
 
+  (define (evaluate-statement-if exp env)
+    (let (
+      [condition (cadr exp)]
+      [if-branch (caddr exp)]
+      [else-branch (cadddr exp)] 
+    )
+     #t
+    ))
+
   (define (evaluate-statement-block exp env)
     (define (recur statement-list env) 
       (if (> (length statement-list) 0)
@@ -90,6 +99,7 @@
   (define (evaluate exp env)
       (let ([type (car exp)])
         (cond
+          [(equal? type 'STATEMENT_IF) (evaluate-statement-if exp env)]
           [(equal? type 'STATEMENT_BLOCK) (evaluate-statement-block exp env)] 
           [(equal? type 'STATEMENT_PRINT) (evaluate-statement-print exp env)]
           [(equal? type 'STATEMENT_EXP) (evaluate-statement-exp exp env)]

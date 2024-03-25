@@ -22,6 +22,7 @@
     (println (parse "{ var x = 1; }"))
     (println (parse "{ var x = 1; } { 1; } "))
     (println (parse "{1+1;} {var x = 7; print x;}"))
+    (println (parse "if (true) { print(1); }"))
     ; (let ([token-list (scan "{var x = 1;}")])
     ;   (begin
     ;     (println token-list)
@@ -43,6 +44,7 @@
     ; (interpret "{x = 7; print x;}")
     (interpret "var global = 1; { var local = 2; print global + local; }")
     (interpret "var a = \"global a\"; var b = \"global b\"; var c = \"global c\"; {var a = \"outer a\"; var b = \"outer b\"; {var a = \"inner a\"; print a; print b; print c; } print a; print b; print c; } print a; print b; print c;")
+    (interpret "if (true) { print(3); } else { print(5); }")
   )
 )
 
