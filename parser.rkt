@@ -38,6 +38,9 @@
 (define (statement-if condition then-branch else-branch) 
   (list 'STATEMENT_IF condition then-branch else-branch))
 
+(define (statement-while condition body) 
+  (list 'STATEMENT_WHILE condition body))
+
 (define value (list 
     (make-token 'NUMBER 7 null 1)
     (make-token 'EQUAL_EQUAL "==" null 1)
@@ -58,7 +61,7 @@
 ;                        (recur rest-token-list (binary-exp curr-expr operator right)))))
 ;             (recur rest-token-list expr))))
 
-(define DEBUG #t)
+(define DEBUG #f)
 (define (debug msg)
   (if DEBUG (println msg) '()))
 
@@ -96,9 +99,19 @@
       (print-statement (cdr token-list))
       (if (match token-list (list 'IF))
         (if-statement (cdr token-list))
-        (if (match token-list (list 'LEFT_BRACE))
-          (block (cdr token-list))
-          (expression-statement token-list)))))
+        (if (match token-list (list 'WHILE))
+          (while-statement (cdr token-list))
+          (if (match token-list (list 'LEFT_BRACE))
+            (block (cdr token-list))
+            (expression-statement token-list))))))
+
+; whileStmt      → "while" "(" expression ")" statement ;
+(define (while-statement token-list)
+  (let ([rest-token-list (consume 'LEFT_PAREN token-list "expect '(' after while")])
+      (let-values ([(condition rest-token-list) (expression rest-token-list)])
+        (let ([rest-token-list (consume 'RIGHT_PAREN rest-token-list "expect ')' after while")])
+          (let-values ([(body rest-token-list) (statement rest-token-list)])
+            (values (statement-while condition body) rest-token-list))))))
 
 (define (if-statement token-list) 
   (let ([rest-token-list (consume 'LEFT_PAREN token-list "expect '(' after if")])

@@ -44,7 +44,24 @@
       [if-branch (caddr exp)]
       [else-branch (cadddr exp)] 
     )
-     #t
+      (if (evaluate condition env)
+        (evaluate if-branch env)
+        (if (not (empty? else-branch)) 
+          (evaluate else-branch env) 
+          '()))
+    ))
+
+  (define (evaluate-statement-while exp env)
+    (let (
+        [condition (cadr exp)]
+        [body (caddr exp)]
+      )
+      (if (evaluate condition env)
+        (begin 
+          (evaluate body env)
+          (evaluate-statement-while exp env)
+        )
+        '())
     ))
 
   (define (evaluate-statement-block exp env)
@@ -78,7 +95,11 @@
         [value (caddr exp)])
         (if (env-has-key? env name)
           (env-set! env name (evaluate value env))
-          (raise (cons "Cannot assign to undeclared variable" (list name))))))
+          (if (not (empty? (cadr env)))
+            (evaluate-assignment exp (cadr env))
+            (raise (cons "Cannot assign to undeclared variable" (list name)))
+          ))))
+          
 
   (define (evaluate-binary exp env)
     (let (
@@ -94,12 +115,17 @@
         [(equal? operator-type 'MINUS) (- binary-value-left binary-value-right)]
         [(equal? operator-type 'STAR) (* binary-value-left binary-value-right)]
         [(equal? operator-type 'SLASH) (/ binary-value-left binary-value-right)]
-        [else (raise ("Unrecognized binary operator"))])))
+        [(equal? operator-type 'LESS) (< binary-value-left binary-value-right)]
+        [(equal? operator-type 'LESS_EQUAL) (<= binary-value-left binary-value-right)]
+        [(equal? operator-type 'GREATER) (> binary-value-left binary-value-right)]
+        [(equal? operator-type 'GREATER_EQUAL) (>= binary-value-left binary-value-right)]
+        [else (raise (cons "Unrecognized binary operator " (list operator-type)))])))
   
   (define (evaluate exp env)
       (let ([type (car exp)])
         (cond
           [(equal? type 'STATEMENT_IF) (evaluate-statement-if exp env)]
+          [(equal? type 'STATEMENT_WHILE) (evaluate-statement-while exp env)]
           [(equal? type 'STATEMENT_BLOCK) (evaluate-statement-block exp env)] 
           [(equal? type 'STATEMENT_PRINT) (evaluate-statement-print exp env)]
           [(equal? type 'STATEMENT_EXP) (evaluate-statement-exp exp env)]
