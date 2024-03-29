@@ -24,6 +24,7 @@
     (println (parse "{1+1;} {var x = 7; print x;}"))
     (println (parse "if (true) { print(1); }"))
     (println (parse "while (a < 5) { print(3); a = 5; }"))
+    (println (parse "fun count(n,x) { print(n); }"))
     ; (let ([token-list (scan "{var x = 1;}")])
     ;   (begin
     ;     (println token-list)
@@ -51,8 +52,8 @@
 )
 
 
-;(test-parser)
-(test-interpreter)
+(test-parser)
+;(test-interpreter)
  ;(println (parse "var a = 0; while (a < 1) { print(3); a = 1;}"))
 ;(println (interpret "var a = 0; a = 1; print(a);"))
 ; (println (interpret "var a = 0; { a = 5; print(a); }"))

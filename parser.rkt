@@ -38,6 +38,9 @@
 (define (statement-if condition then-branch else-branch) 
   (list 'STATEMENT_IF condition then-branch else-branch))
 
+(define (statement-function name param-list body) 
+  (list 'STATEMENT_FUN name param-list body))
+
 (define (statement-while condition body) 
   (list 'STATEMENT_WHILE condition body))
 
@@ -77,9 +80,36 @@
     (let ([token-list (scan src)]) (recur token-list)))
 
 (define (declaration token-list)
-  (if (match token-list (list 'VAR))
-      (var-declaration (cdr token-list))
-      (statement token-list)))
+  (cond 
+    [(match token-list (list 'VAR)) (var-declaration (cdr token-list))]
+    [(match token-list (list 'FUN)) (fun-declaration (cdr token-list))]
+    [else (statement token-list)]))
+
+(define (consume-parameter-list token-list)
+  (define (accumulate-params params rtokens)
+    (if (not (match rtokens (list 'COMMA)))
+      (values params rtokens)
+      (let ([rtokens (consume 'COMMA rtokens "expect , after function param")])
+        (accumulate-params
+          (append params (list (car rtokens)))
+          (cdr rtokens)))))
+  (if (match token-list (list 'RIGHT_PAREN))
+    (values '() token-list)
+    (accumulate-params (list (car token-list)) (cdr token-list))))
+
+(define (fun-declaration tokens)
+  (let (
+      [rtokens (consume 'IDENTIFIER tokens "expect a function name")]
+      [name (car tokens)]
+    )
+    (let ([rtokens (consume 'LEFT_PAREN rtokens "expect '(' after function name")])
+      (let-values ([(param-list rtokens) (consume-parameter-list rtokens)])
+        (let ([rtokens (consume 'RIGHT_PAREN rtokens "expect ')' after function params")])
+          (let ([rtokens (consume 'LEFT_BRACE rtokens "expect '{' before body")])
+            (let-values ([
+              (body rtokens) (block rtokens)
+              ])
+              (values (statement-function name param-list body) rtokens))))))))
 
 (define (var-declaration token-list)
     (let (
@@ -95,15 +125,15 @@
         )))
 
 (define (statement token-list)
-    (if (match token-list (list 'PRINT))
-      (print-statement (cdr token-list))
-      (if (match token-list (list 'IF))
-        (if-statement (cdr token-list))
-        (if (match token-list (list 'WHILE))
-          (while-statement (cdr token-list))
-          (if (match token-list (list 'LEFT_BRACE))
-            (block (cdr token-list))
-            (expression-statement token-list))))))
+  (if (match token-list (list 'PRINT))
+    (print-statement (cdr token-list))
+    (if (match token-list (list 'IF))
+      (if-statement (cdr token-list))
+      (if (match token-list (list 'WHILE))
+        (while-statement (cdr token-list))
+        (if (match token-list (list 'LEFT_BRACE))
+          (block (cdr token-list))
+          (expression-statement token-list))))))
 
 ; whileStmt      → "while" "(" expression ")" statement ;
 (define (while-statement token-list)
@@ -232,6 +262,7 @@
 
 ; reports the wrong line number... currently the line AFTER
 ; the bad token
+; just consumes it and return tokens
 (define (consume token-type token-list error-message)
   (if (empty? token-list)
     (raise (cons "no tokens to consumed" error-message))
