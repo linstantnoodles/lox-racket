@@ -83,6 +83,18 @@
 
   (define (evaluate-variable exp env) (env-get env (cadr exp)))
 
+  (define (evaluate-call exp env)
+    (define (accumulate-arg-values values args)
+      (if (empty? args)
+        values 
+        (accumulate-arg-values (append values (list (evaluate (car args)))) (cdr args))))
+    (let* (
+      [callee (evaluate (cadr exp) env)]
+      [body (cadddr callee)]
+      [arg-values (accumulate-arg-values '() (caddr exp))]
+      )
+      (evaluate body env)))
+
   (define (evaluate-statement-var exp env)
     (let ([name (get-token-lexeme (cadr exp))]
           [initializer (caddr exp)])
@@ -100,6 +112,12 @@
             (raise (cons "Cannot assign to undeclared variable" (list name)))
           ))))
           
+  ; exp is the call expression which is name, params, and block/body
+  (define (evaluate-statement-fun-declaration exp env)
+    (let (
+      [name (cadr exp)]
+      )
+      (env-set! env name exp)))
 
   (define (evaluate-binary exp env)
     (let (
@@ -124,6 +142,7 @@
   (define (evaluate exp env)
       (let ([type (car exp)])
         (cond
+          [(equal? type 'STATEMENT_FUN) (evaluate-statement-fun-declaration exp env)]
           [(equal? type 'STATEMENT_IF) (evaluate-statement-if exp env)]
           [(equal? type 'STATEMENT_WHILE) (evaluate-statement-while exp env)]
           [(equal? type 'STATEMENT_BLOCK) (evaluate-statement-block exp env)] 
@@ -132,6 +151,7 @@
           [(equal? type 'STATEMENT_VAR) (evaluate-statement-var exp env)]
           [(equal? type 'ASSIGNMENT_EXP) (evaluate-assignment exp env)]
           [(equal? type 'VARIABLE_EXP) (evaluate-variable exp env)]
+          [(equal? type 'CALL_EXP) (evaluate-call exp env)]
           [(equal? type 'LITERAL_EXP) (evaluate-literal exp env)]
           [(equal? type 'GROUP_EXP) (evaluate (cadr exp) env)]
           [(equal? type 'UNARY_EXP) (evaluate-unary exp env)]

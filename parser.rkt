@@ -4,6 +4,7 @@
 (require "scanner.rkt")
 (provide parse)
 (provide block)
+(provide consume-arg-list)
 
 (define (binary-exp exp-left operator exp-right)
   (list 'BINARY_EXP exp-left operator exp-right)
@@ -19,6 +20,9 @@
 
 (define (variable-exp exp)
   (list 'VARIABLE_EXP exp))
+
+(define (call-exp exp arguments)
+  (list 'CALL_EXP exp arguments))
 
 (define (assignment-exp name value)
   (list 'ASSIGNMENT_EXP name value))
@@ -109,7 +113,7 @@
             (let-values ([
               (body rtokens) (block rtokens)
               ])
-              (values (statement-function name param-list body) rtokens))))))))
+              (values (statement-function (cadr name) param-list body) rtokens))))))))
 
 (define (var-declaration token-list)
     (let (
@@ -168,17 +172,18 @@
 
 (define (print-statement token-list)
     (let-values ([(expr rest-token-list) (expression token-list)])
-        (let ([rest-token-list (consume 'SEMICOLON rest-token-list "expect ; after expression")])
+        (let ([rest-token-list (consume 'SEMICOLON rest-token-list "expect ; after print expression")])
                                                         (values (statement-print expr) rest-token-list))))
 
 (define (expression-statement token-list)
     (let-values ([(expr rest-token-list) (expression token-list)])
-        (let ([rest-token-list (consume 'SEMICOLON rest-token-list "expect ; after expression")])
+        (let ([rest-token-list (consume 'SEMICOLON rest-token-list "expect ; after statement expression")])
                                                         (values (statement-exp expr) rest-token-list))))
 
 ; expression     → equality ;
 (define (expression token-list)
     (debug "expression")
+    (debug token-list)
     (let-values ([(expr rest-token-list) (assignment token-list)])
       (values expr rest-token-list)))
 
@@ -258,10 +263,42 @@
         [(right-expr rest-token-list) (unary (cdr token-list))]
       )
         (values (unary-exp operator right-expr) rest-token-list))
-    (primary token-list)))
+    (call token-list)))
+
+(define (consume-arg-list token-list)
+  (define (recur args rtokens)
+    (if (match rtokens (list 'RIGHT_PAREN))
+      (values args rtokens)
+        (let-values ([(expr rtokens) (expression rtokens)])
+          (if (match rtokens (list 'COMMA))
+            (let ([rtokens (consume 'COMMA rtokens "expected , after arg")])
+              (recur
+                (append args (list expr))
+                rtokens))
+            (recur
+                (append args (list expr))
+                rtokens)))))
+  (if (match token-list (list 'RIGHT_PAREN)) ; no arguments basically
+    (values '() token-list)
+    (recur '() token-list)))
+
+(define (call token-list)
+  (define (recur callee tokens)
+    (if (not (match tokens (list 'LEFT_PAREN)))
+      (values callee tokens)
+      (let-values ([(arguments rtokens) (consume-arg-list (cdr tokens))])
+        (let ([rtokens (consume 'RIGHT_PAREN rtokens "expect ) after function args")])
+          (recur (call-exp callee arguments) rtokens)))))
+  ; bootstrap the initial callee
+  (let-values ([(expr rtokens) (primary token-list)])
+    (if (match rtokens (list 'LEFT_PAREN))
+      (let-values ([(arguments rtokens) (consume-arg-list (cdr rtokens))])
+        (let ([rtokens (consume 'RIGHT_PAREN rtokens "expect ) after function args")])
+          (recur (call-exp expr arguments) rtokens)))
+      (values expr rtokens))))
 
 ; reports the wrong line number... currently the line AFTER
-; the bad token
+; the bad toke
 ; just consumes it and return tokens
 (define (consume token-type token-list error-message)
   (if (empty? token-list)
@@ -277,7 +314,7 @@
 
 ; primary        → NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" ;
 (define (primary token-list)
-  (debug "primary")
+  (debug "primary calls current token list")
   (debug token-list)
   (debug "---")
   (cond 
