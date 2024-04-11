@@ -6,6 +6,12 @@
 (provide interpret)
 
 (define (interpret src) 
+
+  (struct non-empty-return (value))
+  (struct empty-return ())
+  (define (raise-non-empty-return value) (raise (non-empty-return value)))
+  (define (raise-empty-return) (raise (empty-return '())))
+
   (define (make-env [parent '()])
     (list (make-hash) parent))
 
@@ -87,13 +93,30 @@
     (define (accumulate-arg-values values args)
       (if (empty? args)
         values 
-        (accumulate-arg-values (append values (list (evaluate (car args)))) (cdr args))))
+        (accumulate-arg-values (append values (list (evaluate (car args) env))) (cdr args))))
+
+    (define (bind-params-to-args-in-env params args env)
+      (if (empty? params) env
+        (let (
+          [first-param-name (cadr (car params))]
+          [first-arg (car args)]
+          )
+        (begin
+          (env-set! env first-param-name first-arg)
+          (bind-params-to-args-in-env (cdr params) (cdr args) env)))))
+
     (let* (
       [callee (evaluate (cadr exp) env)]
       [body (cadddr callee)]
+      [params  (caddr callee)]
       [arg-values (accumulate-arg-values '() (caddr exp))]
+      [new-env (bind-params-to-args-in-env params arg-values (make-env env))]
       )
-      (evaluate body env)))
+        (with-handlers (
+          [empty-return? (lambda (exn) '())]
+          [non-empty-return? (lambda (return) (non-empty-return-value return))]
+        )
+          (evaluate body new-env))))
 
   (define (evaluate-statement-var exp env)
     (let ([name (get-token-lexeme (cadr exp))]
@@ -101,6 +124,12 @@
       (if (empty? initializer)
         (env-set! env name '())
         (env-set! env name (evaluate initializer env)))))
+
+  (define (evaluate-statement-return exp env)
+    (let ([value (cadr exp)])
+      (if (empty? value)
+        (raise-empty-return)
+        (raise-non-empty-return (evaluate value env)))))
 
 (define (evaluate-assignment exp env)
   (let ([name (cadr exp)]
@@ -147,6 +176,7 @@
           [(equal? type 'STATEMENT_WHILE) (evaluate-statement-while exp env)]
           [(equal? type 'STATEMENT_BLOCK) (evaluate-statement-block exp env)] 
           [(equal? type 'STATEMENT_PRINT) (evaluate-statement-print exp env)]
+          [(equal? type 'STATEMENT_RETURN) (evaluate-statement-return exp env)]
           [(equal? type 'STATEMENT_EXP) (evaluate-statement-exp exp env)]
           [(equal? type 'STATEMENT_VAR) (evaluate-statement-var exp env)]
           [(equal? type 'ASSIGNMENT_EXP) (evaluate-assignment exp env)]

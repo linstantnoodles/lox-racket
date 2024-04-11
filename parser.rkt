@@ -39,6 +39,9 @@
 (define (statement-var name initializer) 
   (list 'STATEMENT_VAR name initializer))
 
+(define (statement-return value) 
+  (list 'STATEMENT_RETURN value))
+
 (define (statement-if condition then-branch else-branch) 
   (list 'STATEMENT_IF condition then-branch else-branch))
 
@@ -129,15 +132,13 @@
         )))
 
 (define (statement token-list)
-  (if (match token-list (list 'PRINT))
-    (print-statement (cdr token-list))
-    (if (match token-list (list 'IF))
-      (if-statement (cdr token-list))
-      (if (match token-list (list 'WHILE))
-        (while-statement (cdr token-list))
-        (if (match token-list (list 'LEFT_BRACE))
-          (block (cdr token-list))
-          (expression-statement token-list))))))
+  (cond
+    [(match token-list (list 'PRINT)) (print-statement (cdr token-list))]
+    [(match token-list (list 'RETURN)) (return-statement (cdr token-list))]
+    [(match token-list (list 'IF)) (if-statement (cdr token-list))]
+    [(match token-list (list 'WHILE)) (while-statement (cdr token-list))]
+    [(match token-list (list 'LEFT_BRACE)) (block (cdr token-list))]
+    [else (expression-statement token-list)]))
 
 ; whileStmt      → "while" "(" expression ")" statement ;
 (define (while-statement token-list)
@@ -156,7 +157,14 @@
             (let-values ([(else-branch rest-token-list) (statement (cdr rest-token-list))])
               (values (statement-if condition then-branch else-branch) rest-token-list))
             (values (statement-if condition then-branch '()) rest-token-list)))))))
-              
+               
+(define (return-statement token-list)
+  (if (match token-list (list 'SEMICOLON))
+    (values (statement-return '()) (cdr token-list))
+    (let-values ([(value rest-token-list) (expression token-list)])
+      (let ([rest-token-list (consume 'SEMICOLON rest-token-list "expect ; after return expression")])
+        (values (statement-return value) rest-token-list)))))
+
 (define (block token-list)
   (define (at-end token-list) (<= (length token-list) 0))
 
