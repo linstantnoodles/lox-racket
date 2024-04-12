@@ -5,6 +5,10 @@
 (require "scanner.rkt")
 (provide interpret)
 
+(define DEBUG #f)
+(define (debug msg)
+  (if DEBUG (println msg) '()))
+
 (define (interpret src) 
 
   ; allowing control to be passed 
@@ -25,6 +29,8 @@
       (cadddr statement-function)
       env
       ))
+
+  ; envs have parents
   (define (make-env [parent '()])
     (list (make-hash) parent))
 
@@ -33,13 +39,17 @@
       (hash-set! hash key value)))
 
   (define (env-get env key)
-    (let (
-      [hash (car env)]
-      [parent-env (cadr env)]
-      )
-      (if (hash-has-key? hash key)
-        (hash-ref hash key)
-        (env-get parent-env key))))
+    (debug "===env-get===")
+    (debug key)
+    (if (not (pair? env))
+      (raise (format "undefined variable ~a" key))
+      (let (
+        [hash (car env)]
+        [parent-env (cadr env)]
+        )
+        (if (hash-has-key? hash key)
+          (hash-ref hash key)
+          (env-get parent-env key)))))
 
   (define (env-has-key? env key)
     (let ([hash (car env)])
@@ -86,10 +96,21 @@
   (define (evaluate-statement-block exp env)
     (define (recur statement-list env) 
       (if (> (length statement-list) 0)
-        (begin
-          (evaluate (car statement-list) env)
-          (recur (cdr statement-list) env)
-        ) '()))
+        (let* (
+          [statement (car statement-list)]
+          [type (car statement)]
+          )
+          (if (equal? type 'STATEMENT_VAR)
+            (let ([new-env (make-env env)])
+               (begin
+                  (evaluate statement new-env)
+                  (recur (cdr statement-list) new-env)
+                ))
+            (begin
+              (evaluate statement env)
+              (recur (cdr statement-list) env)
+            )))
+         '()))
     (recur (cadr exp) (make-env env)))
 
   (define (evaluate-statement-print exp env)
@@ -117,20 +138,21 @@
         (begin
           (env-set! env first-param-name first-arg)
           (bind-params-to-args-in-env (cdr params) (cdr args) env)))))
-
+    (debug "evaluate-function-call==")
+    (debug (list-ref (evaluate (cadr exp) env) 4))
     (let* (
       [callee (evaluate (cadr exp) env)]
       [body (cadddr callee)]
       [params  (caddr callee)]
       [closure  (list-ref callee 4)]
       [arg-values (accumulate-arg-values '() (caddr exp))]
-      [new-env (bind-params-to-args-in-env params arg-values (make-env closure))]
+      [local-env (bind-params-to-args-in-env params arg-values (make-env closure))]
       )
         (with-handlers (
           [empty-return? (lambda (exn) '())]
           [non-empty-return? (lambda (return) (non-empty-return-value return))]
         )
-          (evaluate body new-env))))
+          (evaluate body local-env))))
 
   (define (evaluate-statement-var exp env)
     (let ([name (get-token-lexeme (cadr exp))]
@@ -183,6 +205,8 @@
         [else (raise (cons "Unrecognized binary operator " (list operator-type)))])))
   
   (define (evaluate exp env)
+      (debug "===evaluation===")
+      (debug exp)
       (let ([type (car exp)])
         (cond
           [(equal? type 'STATEMENT_FUN) (evaluate-statement-fun-declaration exp env)]
@@ -206,9 +230,20 @@
   (define (exec-statements statements env)
     (if (empty? statements)
       (void)
+      (let* (
+        [statement (car statements)]
+        [type (car statement)]
+      )
       (begin
-          (evaluate (car statements) env)
-          (exec-statements (cdr statements) env)
+        (if (equal? type 'STATEMENT_VAR)
+          (let ([new-env (make-env env)])
+            (begin
+              (evaluate statement new-env)
+              (exec-statements (cdr statements) new-env)))
+          (begin
+              (evaluate statement env)
+              (exec-statements (cdr statements) env)))
+      )
     )))
 
   (exec-statements (parse src) (make-env))

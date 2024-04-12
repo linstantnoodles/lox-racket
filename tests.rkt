@@ -35,7 +35,6 @@
     ;   ) 
     ;   )
 ))
-
 (define (test-interpreter)
   (begin
     (interpret "(-(1+1));")
@@ -47,11 +46,11 @@
     (interpret "{1+1;} {var x = 7; print x;}")
     ; assignment should not be allowed to create a new variable
     ; (interpret "{x = 7; print x;}")
-    (interpret "var global = 1; { var local = 2; print global + local; }")
     (interpret "var a = \"global a\"; var b = \"global b\"; var c = \"global c\"; {var a = \"outer a\"; var b = \"outer b\"; {var a = \"inner a\"; print a; print b; print c; } print a; print b; print c; } print a; print b; print c;")
     (interpret "if (false) { print(3); } else { print(5); }")
     (interpret "var a = 0; while (a < 5) { print(3); a = a + 1;}")
     (interpret "fun wow() { print(1); }")
+    (interpret "var a = \"global\"; { fun showA() {print a; } showA(); var a = \"block\"; showA(); }")
   )
 )
 
@@ -60,14 +59,16 @@
      (let ([token-list (scan "2,3,5)")]) (let-values ([(args rtokens) (consume-arg-list token-list)]) (println args)))))
 
 
-(test-arg-accumulator)
-(test-parser)
-(println (parse "fun wow() { print(1); } wow();"))
-(interpret "fun wow(a, b) { print(a); print(b); } wow(5, 1+1);")
-(test-interpreter)
-(interpret "fun wow(a, b) { return 20; } var a = wow(5, 1+1); print(a);")
-(interpret "fun makeCounter() {var i = 0; fun count() {i = i + 1; print i; } return count; } var counter = makeCounter(); counter(); counter();")
-(println (parse "var a = 0; while (a < 1) { print(3); a = 1;}"))
-(println (interpret "var a = 0; a = 1; print(a);"))
-(println (interpret "var a = 0; { a = 5; print(a); }"))
+; (test-arg-accumulator)
+; (test-parser)
+; (println (parse "fun wow() { print(1); } wow();"))
+; (interpret "fun wow(a, b) { print(a); print(b); } wow(5, 1+1);")
+; (test-interpreter)
+;(parse "var a = \"global\"; { fun showA() {print a; } showA(); var a = \"block\"; showA(); }")
+(interpret "var a = \"global\"; { fun showA() {print a; } showA(); var a = \"block\"; showA(); }")
+;(interpret "fun wow(a, b) { return a + b; } var a = wow(5, 1+1); print(a);")
+; (interpret "fun makeCounter() {var i = 0; fun count() {i = i + 1; print i; } return count; } var counter = makeCounter(); counter(); counter();")
+; (println (parse "var a = 0; while (a < 1) { print(3); a = 1;}"))
+; (println (interpret "var a = 0; a = 1; print(a);"))
+; (println (interpret "var a = 0; { a = 5; print(a); }"))
 ; next - bind arguments to params, create new environment for invocations, handle return statements
