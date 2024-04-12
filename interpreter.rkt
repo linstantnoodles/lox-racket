@@ -11,7 +11,14 @@
   (struct empty-return ())
   (define (raise-non-empty-return value) (raise (non-empty-return value)))
   (define (raise-empty-return) (raise (empty-return '())))
-
+  (define (lexical-statement-function statement-function env)
+    (list
+      (car statement-function)
+      (cadr statement-function)
+      (caddr statement-function)
+      (cadddr statement-function)
+      env
+      ))
   (define (make-env [parent '()])
     (list (make-hash) parent))
 
@@ -89,7 +96,7 @@
 
   (define (evaluate-variable exp env) (env-get env (cadr exp)))
 
-  (define (evaluate-call exp env)
+  (define (evaluate-function-call exp env)
     (define (accumulate-arg-values values args)
       (if (empty? args)
         values 
@@ -109,8 +116,9 @@
       [callee (evaluate (cadr exp) env)]
       [body (cadddr callee)]
       [params  (caddr callee)]
+      [closure  (list-ref callee 4)]
       [arg-values (accumulate-arg-values '() (caddr exp))]
-      [new-env (bind-params-to-args-in-env params arg-values (make-env env))]
+      [new-env (bind-params-to-args-in-env params arg-values (make-env closure))]
       )
         (with-handlers (
           [empty-return? (lambda (exn) '())]
@@ -146,7 +154,7 @@
     (let (
       [name (cadr exp)]
       )
-      (env-set! env name exp)))
+      (env-set! env name (lexical-statement-function exp env))))
 
   (define (evaluate-binary exp env)
     (let (
@@ -181,7 +189,7 @@
           [(equal? type 'STATEMENT_VAR) (evaluate-statement-var exp env)]
           [(equal? type 'ASSIGNMENT_EXP) (evaluate-assignment exp env)]
           [(equal? type 'VARIABLE_EXP) (evaluate-variable exp env)]
-          [(equal? type 'CALL_EXP) (evaluate-call exp env)]
+          [(equal? type 'CALL_EXP) (evaluate-function-call exp env)]
           [(equal? type 'LITERAL_EXP) (evaluate-literal exp env)]
           [(equal? type 'GROUP_EXP) (evaluate (cadr exp) env)]
           [(equal? type 'UNARY_EXP) (evaluate-unary exp env)]

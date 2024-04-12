@@ -60,13 +60,14 @@
      (let ([token-list (scan "2,3,5)")]) (let-values ([(args rtokens) (consume-arg-list token-list)]) (println args)))))
 
 
-;(test-arg-accumulator)
-;(test-parser)
-;(println (parse "fun wow() { print(1); } wow();"))
-;(interpret "fun wow(a, b) { print(a); print(b); } wow(5, 1+1);")
-;(test-interpreter)
+(test-arg-accumulator)
+(test-parser)
+(println (parse "fun wow() { print(1); } wow();"))
+(interpret "fun wow(a, b) { print(a); print(b); } wow(5, 1+1);")
+(test-interpreter)
 (interpret "fun wow(a, b) { return 20; } var a = wow(5, 1+1); print(a);")
- ;(println (parse "var a = 0; while (a < 1) { print(3); a = 1;}"))
-;(println (interpret "var a = 0; a = 1; print(a);"))
-; (println (interpret "var a = 0; { a = 5; print(a); }"))
+(interpret "fun makeCounter() {var i = 0; fun count() {i = i + 1; print i; } return count; } var counter = makeCounter(); counter(); counter();")
+(println (parse "var a = 0; while (a < 1) { print(3); a = 1;}"))
+(println (interpret "var a = 0; a = 1; print(a);"))
+(println (interpret "var a = 0; { a = 5; print(a); }"))
 ; next - bind arguments to params, create new environment for invocations, handle return statements
