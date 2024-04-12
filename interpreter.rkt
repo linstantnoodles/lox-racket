@@ -7,10 +7,16 @@
 
 (define (interpret src) 
 
+  ; allowing control to be passed 
+  ; upwards
   (struct non-empty-return (value))
   (struct empty-return ())
   (define (raise-non-empty-return value) (raise (non-empty-return value)))
   (define (raise-empty-return) (raise (empty-return '())))
+
+  ; compose a new function to store closures
+  ; this needs to be defined in the interpreter because
+  ; that's where environments are introduced
   (define (lexical-statement-function statement-function env)
     (list
       (car statement-function)
