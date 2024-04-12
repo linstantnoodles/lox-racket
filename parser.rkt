@@ -5,86 +5,33 @@
 (provide parse)
 (provide block)
 (provide consume-arg-list)
-
-(define (binary-exp exp-left operator exp-right)
-  (list 'BINARY_EXP exp-left operator exp-right)
-)
-(define (group-exp exp)
-  (list 'GROUP_EXP exp))
-
-(define (unary-exp token exp)
-  (list 'UNARY_EXP token exp))
-
-(define (literal-exp exp)
-  (list 'LITERAL_EXP exp))
-
-(define (variable-exp exp)
-  (list 'VARIABLE_EXP exp))
-
-(define (call-exp exp arguments)
-  (list 'CALL_EXP exp arguments))
-
-(define (assignment-exp name value)
-  (list 'ASSIGNMENT_EXP name value))
-
-(define (statement-print exp)
-  (list 'STATEMENT_PRINT exp))
-
-(define (statement-block exp)
-  (list 'STATEMENT_BLOCK exp))
-
-(define (statement-exp exp)
-  (list 'STATEMENT_EXP exp))
-
-(define (statement-var name initializer) 
-  (list 'STATEMENT_VAR name initializer))
-
-(define (statement-return value) 
-  (list 'STATEMENT_RETURN value))
-
-(define (statement-if condition then-branch else-branch) 
-  (list 'STATEMENT_IF condition then-branch else-branch))
-
-(define (statement-function name param-list body) 
-  (list 'STATEMENT_FUN name param-list body))
-
-(define (statement-while condition body) 
-  (list 'STATEMENT_WHILE condition body))
-
-(define value (list 
-    (make-token 'NUMBER 7 null 1)
-    (make-token 'EQUAL_EQUAL "==" null 1)
-    (make-token 'NUMBER 7 null 1)
-))
-
-; how does lambda call itself?
-; (define (seq-op-creator token-types)
-;     (lambda (term token-list)
-;         (let-values ([(expr rest-token-list) (factor token-list)])
-;             (define (recur token-list curr-expr)
-;                 (if (not (match token-list token-types))
-;                   (values curr-expr token-list)
-;                   (let-values (
-;                         [(operator) (car token-list)]
-;                         [(right rest-token-list) (factor (cdr token-list))]
-;                        )
-;                        (recur rest-token-list (binary-exp curr-expr operator right)))))
-;             (recur rest-token-list expr))))
-
 (define DEBUG #f)
 (define (debug msg)
   (if DEBUG (println msg) '()))
 
+(define (binary-exp exp-left operator exp-right) (list 'BINARY_EXP exp-left operator exp-right))
+(define (group-exp exp) (list 'GROUP_EXP exp))
+(define (unary-exp token exp) (list 'UNARY_EXP token exp))
+(define (literal-exp exp) (list 'LITERAL_EXP exp))
+(define (variable-exp exp) (list 'VARIABLE_EXP exp))
+(define (call-exp exp arguments) (list 'CALL_EXP exp arguments))
+(define (assignment-exp name value) (list 'ASSIGNMENT_EXP name value))
+(define (statement-print exp) (list 'STATEMENT_PRINT exp))
+(define (statement-block exp) (list 'STATEMENT_BLOCK exp))
+(define (statement-exp exp) (list 'STATEMENT_EXP exp))
+(define (statement-var name initializer) (list 'STATEMENT_VAR name initializer))
+(define (statement-return value) (list 'STATEMENT_RETURN value))
+(define (statement-if condition then-branch else-branch) (list 'STATEMENT_IF condition then-branch else-branch))
+(define (statement-function name param-list body) (list 'STATEMENT_FUN name param-list body))
+(define (statement-while condition body) (list 'STATEMENT_WHILE condition body))
+
 (define (parse src)
-    (define (recur token-list)
-      (if (empty? token-list) 
-        '()
-        (let-values ([
-            (declaration-value rest-token-list) (declaration token-list)
-        ])
-            (cons declaration-value (recur rest-token-list))
-            )))
-    (let ([token-list (scan src)]) (recur token-list)))
+  (define (recur token-list)
+    (if (empty? token-list) 
+      '()
+      (let-values ([(declaration-value rtokens) (declaration token-list)])
+        (cons declaration-value (recur rtokens)))))
+  (let ([token-list (scan src)]) (recur token-list)))
 
 (define (declaration token-list)
   (cond 
@@ -120,15 +67,15 @@
 
 (define (var-declaration token-list)
     (let (
-          [rest-token-list (consume 'IDENTIFIER token-list "expect a variable name")]
+          [rtokens (consume 'IDENTIFIER token-list "expect a variable name")]
           [name (car token-list)]
          )
-        (if (match rest-token-list (list 'EQUAL))
-            (let-values ([(initializer rest-token-list) (expression (cdr rest-token-list))])
-                (let ([rest-token-list (consume 'SEMICOLON rest-token-list "expect ; after variable decl")])
-                    (values (statement-var name initializer) rest-token-list)))
-            (let ([rest-token-list (consume 'SEMICOLON rest-token-list "expect ; after variable initialization")])
-              (values (statement-var name '()) rest-token-list))
+        (if (match rtokens (list 'EQUAL))
+            (let-values ([(initializer rtokens) (expression (cdr rtokens))])
+                (let ([rtokens (consume 'SEMICOLON rtokens "expect ; after variable decl")])
+                    (values (statement-var name initializer) rtokens)))
+            (let ([rtokens (consume 'SEMICOLON rtokens "expect ; after variable initialization")])
+              (values (statement-var name '()) rtokens))
         )))
 
 (define (statement token-list)
@@ -142,28 +89,28 @@
 
 ; whileStmt      → "while" "(" expression ")" statement ;
 (define (while-statement token-list)
-  (let ([rest-token-list (consume 'LEFT_PAREN token-list "expect '(' after while")])
-      (let-values ([(condition rest-token-list) (expression rest-token-list)])
-        (let ([rest-token-list (consume 'RIGHT_PAREN rest-token-list "expect ')' after while")])
-          (let-values ([(body rest-token-list) (statement rest-token-list)])
-            (values (statement-while condition body) rest-token-list))))))
+  (let ([rtokens (consume 'LEFT_PAREN token-list "expect '(' after while")])
+      (let-values ([(condition rtokens) (expression rtokens)])
+        (let ([rtokens (consume 'RIGHT_PAREN rtokens "expect ')' after while")])
+          (let-values ([(body rtokens) (statement rtokens)])
+            (values (statement-while condition body) rtokens))))))
 
 (define (if-statement token-list) 
-  (let ([rest-token-list (consume 'LEFT_PAREN token-list "expect '(' after if")])
-    (let-values ([(condition rest-token-list) (expression rest-token-list)])
-      (let ([rest-token-list (consume 'RIGHT_PAREN rest-token-list "expect ')' after if")])
-        (let-values ([(then-branch rest-token-list) (statement rest-token-list)])
-          (if (match rest-token-list (list 'ELSE))
-            (let-values ([(else-branch rest-token-list) (statement (cdr rest-token-list))])
-              (values (statement-if condition then-branch else-branch) rest-token-list))
-            (values (statement-if condition then-branch '()) rest-token-list)))))))
+  (let ([rtokens (consume 'LEFT_PAREN token-list "expect '(' after if")])
+    (let-values ([(condition rtokens) (expression rtokens)])
+      (let ([rtokens (consume 'RIGHT_PAREN rtokens "expect ')' after if")])
+        (let-values ([(then-branch rtokens) (statement rtokens)])
+          (if (match rtokens (list 'ELSE))
+            (let-values ([(else-branch rtokens) (statement (cdr rtokens))])
+              (values (statement-if condition then-branch else-branch) rtokens))
+            (values (statement-if condition then-branch '()) rtokens)))))))
                
 (define (return-statement token-list)
   (if (match token-list (list 'SEMICOLON))
     (values (statement-return '()) (cdr token-list))
-    (let-values ([(value rest-token-list) (expression token-list)])
-      (let ([rest-token-list (consume 'SEMICOLON rest-token-list "expect ; after return expression")])
-        (values (statement-return value) rest-token-list)))))
+    (let-values ([(value rtokens) (expression token-list)])
+      (let ([rtokens (consume 'SEMICOLON rtokens "expect ; after return expression")])
+        (values (statement-return value) rtokens)))))
 
 (define (block token-list)
   (define (at-end token-list) (<= (length token-list) 0))
@@ -171,106 +118,101 @@
   (define (recur statements token-list)
     (if (or (match token-list (list 'RIGHT_BRACE)) (at-end token-list))
       (values statements token-list)
-      (let-values ([(expr rest-token-list) (declaration token-list)])
-        (recur (append statements (list expr)) rest-token-list))))
+      (let-values ([(expr rtokens) (declaration token-list)])
+        (recur (append statements (list expr)) rtokens))))
 
-  (let-values ([(statement-list rest-token-list) (recur '() token-list)])
-      (let ([rest-token-list (consume 'RIGHT_BRACE rest-token-list "expectesd } after block")])
-      (values (statement-block statement-list) rest-token-list))))
+  (let-values ([(statement-list rtokens) (recur '() token-list)])
+      (let ([rtokens (consume 'RIGHT_BRACE rtokens "expectesd } after block")])
+      (values (statement-block statement-list) rtokens))))
 
 (define (print-statement token-list)
-    (let-values ([(expr rest-token-list) (expression token-list)])
-        (let ([rest-token-list (consume 'SEMICOLON rest-token-list "expect ; after print expression")])
-                                                        (values (statement-print expr) rest-token-list))))
+    (let-values ([(expr rtokens) (expression token-list)])
+        (let ([rtokens (consume 'SEMICOLON rtokens "expect ; after print expression")])
+                                                        (values (statement-print expr) rtokens))))
 
 (define (expression-statement token-list)
-    (let-values ([(expr rest-token-list) (expression token-list)])
-        (let ([rest-token-list (consume 'SEMICOLON rest-token-list "expect ; after statement expression")])
-                                                        (values (statement-exp expr) rest-token-list))))
+    (let-values ([(expr rtokens) (expression token-list)])
+        (let ([rtokens (consume 'SEMICOLON rtokens "expect ; after statement expression")])
+                                                        (values (statement-exp expr) rtokens))))
 
 ; expression     → equality ;
 (define (expression token-list)
     (debug "expression")
     (debug token-list)
-    (let-values ([(expr rest-token-list) (assignment token-list)])
-      (values expr rest-token-list)))
+    (let-values ([(expr rtokens) (assignment token-list)])
+      (values expr rtokens)))
 
 (define (assignment token-list)
-    (let-values ([(expr rest-token-list) (equality token-list)])
-      (if (match rest-token-list (list 'EQUAL))
-        (let-values ([(value rest-token-list) (assignment (cdr rest-token-list))])
+    (let-values ([(expr rtokens) (equality token-list)])
+      (if (match rtokens (list 'EQUAL))
+        (let-values ([(value rtokens) (assignment (cdr rtokens))])
           (if (eq? (car expr) 'VARIABLE_EXP)
-            (values (assignment-exp (cadr expr) value) rest-token-list)
+            (values (assignment-exp (cadr expr) value) rtokens)
             (raise "invalid assignment target.")))
-        (values expr rest-token-list))))
+        (values expr rtokens))))
 
 ; equality       → comparison ( ( "!=" | "==" ) comparison )* ;
 (define (equality token-list)
-    (let-values ([(expr rest-token-list) (comparison token-list)])
-        (define (recur token-list curr-expr)
-            (if (not (match token-list (list 'BANG_EQUAL 'EQUAL_EQUAL)))
-              (values curr-expr token-list)
-              (let-values (
-                    [(operator) (car token-list)]
-                    [(right rest-token-list) (comparison (cdr token-list))]
-                   )
-                   (recur rest-token-list (binary-exp curr-expr operator right)))))
-        (recur rest-token-list expr)))
+  (let-values ([(expr rtokens) (comparison token-list)])
+    (define (recur token-list curr-expr)
+      (if (not (match token-list (list 'BANG_EQUAL 'EQUAL_EQUAL)))
+        (values curr-expr token-list)
+        (let-values (
+          [(operator) (car token-list)]
+          [(right rtokens) (comparison (cdr token-list))]
+          )
+          (recur rtokens (binary-exp curr-expr operator right)))))
+      (recur rtokens expr)))
 
 ; comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
 (define (comparison token-list)
     (debug "comparison")
     (debug token-list)
-    (let-values ([(expr rest-token-list) (term token-list)])
+    (let-values ([(expr rtokens) (term token-list)])
         (define (recur token-list curr-expr)
             (if (not (match token-list (list 'LESS 'GREATER 'LESS_EQUAL 'GREATER_EQUAL)))
               (values curr-expr token-list)
               (let-values (
                     [(operator) (car token-list)]
-                    [(right rest-token-list) (term (cdr token-list))]
+                    [(right rtokens) (term (cdr token-list))]
                    )
-                   (recur rest-token-list (binary-exp curr-expr operator right)))))
-        (recur rest-token-list expr)))
+                   (recur rtokens (binary-exp curr-expr operator right)))))
+        (recur rtokens expr)))
 
-; term           → factor ( ( "-" | "+" ) factor )* ;
+; term → factor ( ( "-" | "+" ) factor )* ;
 (define (term token-list)
-    (debug "-term")
-    (debug token-list)
-    (let-values ([(expr rest-token-list) (factor token-list)])
-        (define (recur token-list curr-expr)
-            (if (not (match token-list (list 'MINUS 'PLUS)))
-              (values curr-expr token-list)
-              (let-values (
-                    [(operator) (car token-list)]
-                    [(right rest-token-list) (factor (cdr token-list))]
-                   )
-                   (recur rest-token-list (binary-exp curr-expr operator right)))))
-        (recur rest-token-list expr)))
-
-; factor         → unary ( ( "/" | "*" ) unary )* ;
-(define (factor token-list)
-  (let-values ([(expr rest-token-list) (unary token-list)])
+  (let-values ([(expr rtokens) (factor token-list)])
     (define (recur token-list curr-expr)
-        (if (not (match token-list (list 'SLASH 'STAR)))
+        (if (not (match token-list (list 'MINUS 'PLUS)))
           (values curr-expr token-list)
           (let-values (
-                [(operator) (car token-list)]
-                [(right rest-token-list) (unary (cdr token-list))]
-               )
-               (recur rest-token-list (binary-exp curr-expr operator right)))))
-    (recur rest-token-list expr)))
+              [(operator) (car token-list)]
+              [(right rtokens) (factor (cdr token-list))]
+              )
+              (recur rtokens (binary-exp curr-expr operator right)))))
+    (recur rtokens expr)))
 
-; unary          → ( "!" | "-" ) unary | primary ;
+; factor → unary ( ( "/" | "*" ) unary )* ;
+(define (factor token-list)
+  (let-values ([(expr rtokens) (unary token-list)])
+    (define (recur token-list curr-expr)
+      (if (not (match token-list (list 'SLASH 'STAR)))
+        (values curr-expr token-list)
+        (let-values (
+          [(operator) (car token-list)]
+          [(right rtokens) (unary (cdr token-list))]
+          )
+          (recur rtokens (binary-exp curr-expr operator right)))))
+    (recur rtokens expr)))
+
+; unary → ( "!" | "-" ) unary | primary ;
 (define (unary token-list)
-  (debug "unary")
-  (debug token-list)
-  (debug "---")
   (if (match token-list (list 'MINUS 'BANG))
     (let-values (
-        [(operator) (car token-list)]
-        [(right-expr rest-token-list) (unary (cdr token-list))]
-      )
-        (values (unary-exp operator right-expr) rest-token-list))
+      [(operator) (car token-list)]
+      [(right-expr rtokens) (unary (cdr token-list))]
+    )
+      (values (unary-exp operator right-expr) rtokens))
     (call token-list)))
 
 (define (consume-arg-list token-list)
@@ -320,20 +262,17 @@
                 "line"
                 (number->string (get-token-line next-token)) ":" error-message)))))))
 
-; primary        → NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" ;
+; primary → NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" ;
 (define (primary token-list)
-  (debug "primary calls current token list")
-  (debug token-list)
-  (debug "---")
   (cond 
     [(match token-list (list 'FALSE)) (values (literal-exp #f) (cdr token-list))]
     [(match token-list (list 'TRUE)) (values (literal-exp #t) (cdr token-list))]
     [(match token-list (list 'NIL)) (values (literal-exp '()) (cdr token-list))]
     [(match token-list (list 'NUMBER 'STRING)) (values (literal-exp (caddr (car token-list))) (cdr token-list))]
     [(match token-list (list 'IDENTIFIER)) (values (variable-exp (caddr (car token-list))) (cdr token-list))]
-    [(match token-list (list 'LEFT_PAREN)) (let-values ([(expr rest-token-list) (expression (cdr token-list))])
-                                                     (let ([rest-token-list (consume 'RIGHT_PAREN rest-token-list "expect ) after expression")])
-                                                        (values (group-exp expr) rest-token-list)))]
+    [(match token-list (list 'LEFT_PAREN)) (let-values ([(expr rtokens) (expression (cdr token-list))])
+                                                     (let ([rtokens (consume 'RIGHT_PAREN rtokens "expect ) after expression")])
+                                                        (values (group-exp expr) rtokens)))]
     [else (raise "expected a valid expression")]
   )
 )
@@ -342,60 +281,3 @@
     (if (empty? token-list)
       #false
       (if (member (caar token-list) token-types) #t #f)))
-
-; match tests
-; (match value (list 'EQUAL_EQUAL))
-; (match value (list 'UAL_EQUAL))
-
-; unary tests
-; (unary (list 
-;     (make-token 'MINUS '-' null 1)
-;     (make-token 'NUMBER '5' 5 1)
-;     ))
-
-; primary tests
-; (primary (list 
-;   (make-token 'NUMBER '123' 123 1)
-; ))
-
-; factor
-; (factor (list 
-;     (make-token 'NUMBER '5' 5 1)
-;     (make-token 'STAR '*' null 1)
-;     (make-token 'NUMBER '5' 5 1)
-;     ))
-
-; comparison
-; (comparison (list 
-;     (make-token 'NUMBER '5' 5 1)
-;     (make-token 'GREATER '>' null 1)
-;     (make-token 'NUMBER '5' 5 1)
-;     ))
-
-; equality
-; (equality (list 
-;     (make-token 'NUMBER '5' 5 1)
-;     (make-token 'EQUAL_EQUAL '== null 1)
-;     (make-token 'NUMBER '5' 5 1)
-;     ))
-
-; expression
-; bug - the issue is that our match doesn't work per spec
-; match should only match values in SEQUENCE. instead we're doing a membership check
-; (expression (list 
-;     (make-token 'LEFT_PAREN "(" null 1)
-;     (make-token 'NUMBER '5' 5 1)
-;     (make-token 'MINUS '-' null 1)
-;     (make-token 'NUMBER '5' 5 1)
-;     (make-token 'RIGHT_PAREN ")" null 1)
-;     ))
-
-#| (expression (list (make-token 'STRING 'wowofsdf' 'wowowd' 1))) |#
-
-;(statement (list 
-;     (make-token 'PRINT 'print' 5 1)
-;     (make-token 'NUMBER '5' 5 1)
-;     (make-token 'SEMICOLON ";" 1 1)
-;))
-
-; (parse "x + x;")

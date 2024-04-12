@@ -63,7 +63,7 @@
 ; (test-parser)
 ; (println (parse "fun wow() { print(1); } wow();"))
 ; (interpret "fun wow(a, b) { print(a); print(b); } wow(5, 1+1);")
-; (test-interpreter)
+(test-interpreter)
 ;(parse "var a = \"global\"; { fun showA() {print a; } showA(); var a = \"block\"; showA(); }")
 (interpret "var a = \"global\"; { fun showA() {print a; } showA(); var a = \"block\"; showA(); }")
 ;(interpret "fun wow(a, b) { return a + b; } var a = wow(5, 1+1); print(a);")
@@ -72,3 +72,60 @@
 ; (println (interpret "var a = 0; a = 1; print(a);"))
 ; (println (interpret "var a = 0; { a = 5; print(a); }"))
 ; next - bind arguments to params, create new environment for invocations, handle return statements
+
+; match tests
+; (match value (list 'EQUAL_EQUAL))
+; (match value (list 'UAL_EQUAL))
+
+; unary tests
+; (unary (list 
+;     (make-token 'MINUS '-' null 1)
+;     (make-token 'NUMBER '5' 5 1)
+;     ))
+
+; primary tests
+; (primary (list 
+;   (make-token 'NUMBER '123' 123 1)
+; ))
+
+; factor
+; (factor (list 
+;     (make-token 'NUMBER '5' 5 1)
+;     (make-token 'STAR '*' null 1)
+;     (make-token 'NUMBER '5' 5 1)
+;     ))
+
+; comparison
+; (comparison (list 
+;     (make-token 'NUMBER '5' 5 1)
+;     (make-token 'GREATER '>' null 1)
+;     (make-token 'NUMBER '5' 5 1)
+;     ))
+
+; equality
+; (equality (list 
+;     (make-token 'NUMBER '5' 5 1)
+;     (make-token 'EQUAL_EQUAL '== null 1)
+;     (make-token 'NUMBER '5' 5 1)
+;     ))
+
+; expression
+; bug - the issue is that our match doesn't work per spec
+; match should only match values in SEQUENCE. instead we're doing a membership check
+; (expression (list 
+;     (make-token 'LEFT_PAREN "(" null 1)
+;     (make-token 'NUMBER '5' 5 1)
+;     (make-token 'MINUS '-' null 1)
+;     (make-token 'NUMBER '5' 5 1)
+;     (make-token 'RIGHT_PAREN ")" null 1)
+;     ))
+
+#| (expression (list (make-token 'STRING 'wowofsdf' 'wowowd' 1))) |#
+
+;(statement (list 
+;     (make-token 'PRINT 'print' 5 1)
+;     (make-token 'NUMBER '5' 5 1)
+;     (make-token 'SEMICOLON ";" 1 1)
+;))
+
+; (parse "x + x;")
