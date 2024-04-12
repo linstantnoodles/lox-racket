@@ -245,15 +245,4 @@
               (exec-statements (cdr statements) env)))
       )
     )))
-
-  (exec-statements (parse src) (make-env))
-  #| (println "printing end hash") |#
-  #| (println envr) |#
-)
-
-;(interpret "(-(1+1))")
-;(interpret "(-(2+1))"):w
-;(interpret "(-(2*5))")
-;(interpret "(1 + 1)")
-;(interpret "(\"wow\" + \"hey\")")
-; (interpret "var k = 5 + 1; k = 2; print k;")
+  (exec-statements (parse src) (make-env)))
