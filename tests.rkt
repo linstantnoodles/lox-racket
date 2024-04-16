@@ -63,9 +63,9 @@
 ; (test-parser)
 ; (println (parse "fun wow() { print(1); } wow();"))
 ; (interpret "fun wow(a, b) { print(a); print(b); } wow(5, 1+1);")
-(test-interpreter)
+;(test-interpreter)
 ;(parse "var a = \"global\"; { fun showA() {print a; } showA(); var a = \"block\"; showA(); }")
-(interpret "var a = \"global\"; { fun showA() {print a; } showA(); var a = \"block\"; showA(); }")
+;(interpret "var a = \"global\"; { fun showA() {print a; } showA(); var a = \"block\"; showA(); }")
 ;(interpret "fun wow(a, b) { return a + b; } var a = wow(5, 1+1); print(a);")
 ; (interpret "fun makeCounter() {var i = 0; fun count() {i = i + 1; print i; } return count; } var counter = makeCounter(); counter(); counter();")
 ; (println (parse "var a = 0; while (a < 1) { print(3); a = 1;}"))
@@ -129,3 +129,14 @@
 ;))
 
 ; (parse "x + x;")
+;(interpret "var a = 5; fun foo() { a = a + 10; print(a); } var a = 10; foo();")
+
+(interpret "for (var i = 0; i < 10; i = i + 1) print(i);")
+
+; '(
+;   (STATEMENT_VAR (IDENTIFIER "i" "i" 1) (LITERAL_EXP 0))
+;   (STATEMENT_WHILE 
+;     (BINARY_EXP (VARIABLE_EXP "i") (LESS () () 1) (LITERAL_EXP 2))
+;     (STATEMENT_BLOCK (
+;       (STATEMENT_PRINT (GROUP_EXP (VARIABLE_EXP "i")))
+;       (STATEMENT_EXP (ASSIGNMENT_EXP "i" (BINARY_EXP (VARIABLE_EXP "i") (PLUS () () 1) (LITERAL_EXP 1))))))))

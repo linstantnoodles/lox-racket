@@ -84,8 +84,45 @@
     [(match token-list (list 'RETURN)) (return-statement (cdr token-list))]
     [(match token-list (list 'IF)) (if-statement (cdr token-list))]
     [(match token-list (list 'WHILE)) (while-statement (cdr token-list))]
+    [(match token-list (list 'FOR)) (for-statement (cdr token-list))]
     [(match token-list (list 'LEFT_BRACE)) (block (cdr token-list))]
     [else (expression-statement token-list)]))
+
+; forStmt → "for" "(" ( varDecl | exprStmt | ";" )
+;             expression? ";"
+;             expression? ")" statement ;
+(define (for-statement token-list)
+  (define (initializer token-list)
+    (cond 
+      [(match token-list (list 'SEMICOLON)) (values '() (cdr token-list))]
+      [(match token-list (list 'VAR)) (var-declaration (cdr token-list))]
+      [else (expression-statement token-list)]))  
+  (define (condition token-list)
+    (if (match token-list (list 'SEMICOLON))
+      (values '() (cdr token-list))
+      (let-values ([(expression-value rtokens) (expression token-list)])
+         (let ([rtokens (consume 'SEMICOLON rtokens "expect ';' after condition expression")])
+          (values expression-value rtokens)))))
+  (define (increment token-list)
+    (if (match token-list (list 'RIGHT_PAREN))
+      (values '() (cdr token-list))
+      (let-values ([(expression-value rtokens) (expression token-list)])
+         (let ([rtokens (consume 'RIGHT_PAREN rtokens "expect ')' after increment expression")])
+          (values expression-value rtokens)))))
+  (let ([rtokens (consume 'LEFT_PAREN token-list "expect '(' after for")])
+    (let-values ([(initializer-value rtokens) (initializer rtokens)])
+      (let-values ([(condition-value rtokens) (condition rtokens)])
+        (let-values ([(increment-value rtokens) (increment rtokens)])
+          (let-values ([(body-value rtokens) (statement rtokens)])
+            (values (statement-block
+              (list
+                initializer-value
+                (statement-while 
+                  condition-value
+                  (statement-block
+                    (list
+                      body-value
+                      (statement-exp increment-value)))))) rtokens)))))))
 
 ; whileStmt      → "while" "(" expression ")" statement ;
 (define (while-statement token-list)
@@ -260,7 +297,7 @@
             (string-join
               (list
                 "line"
-                (number->string (get-token-line next-token)) ":" error-message)))))))
+                (number->string (get-token-line next-token)) ":" error-message (format "--- encountered type ~a" (car next-token)))))))))
 
 ; primary → NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" ;
 (define (primary token-list)
