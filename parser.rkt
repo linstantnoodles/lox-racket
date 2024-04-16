@@ -110,19 +110,22 @@
          (let ([rtokens (consume 'RIGHT_PAREN rtokens "expect ')' after increment expression")])
           (values expression-value rtokens)))))
   (let ([rtokens (consume 'LEFT_PAREN token-list "expect '(' after for")])
-    (let-values ([(initializer-value rtokens) (initializer rtokens)])
-      (let-values ([(condition-value rtokens) (condition rtokens)])
-        (let-values ([(increment-value rtokens) (increment rtokens)])
-          (let-values ([(body-value rtokens) (statement rtokens)])
-            (values (statement-block
-              (list
-                initializer-value
-                (statement-while 
-                  condition-value
-                  (statement-block
-                    (list
-                      body-value
-                      (statement-exp increment-value)))))) rtokens)))))))
+    (let*-values (
+      [(initializer-value rtokens) (initializer rtokens)]
+      [(condition-value rtokens) (condition rtokens)]
+      [(increment-value rtokens) (increment rtokens)]
+      [(body-value rtokens) (statement rtokens)])
+        (values
+          (statement-block
+            (list
+              initializer-value
+              (statement-while 
+                condition-value
+                (statement-block
+                  (list
+                    body-value
+                    (statement-exp increment-value))))))
+          rtokens))))
 
 ; whileStmt      → "while" "(" expression ")" statement ;
 (define (while-statement token-list)
