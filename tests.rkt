@@ -131,7 +131,9 @@
 ; (parse "x + x;")
 ;(interpret "var a = 5; fun foo() { a = a + 10; print(a); } var a = 10; foo();")
 
-(interpret "for (var i = 0; i < 10; i = i + 1) print(i);")
+;(interpret "for (var i = 0; i < 10; i = i + 1) print(i);")
+ 
+(parse "class Jabba { foo() {print(1);}  bar() {}} var x = Jabba(); print(x); x.wow(2,3);")
 
 ; '(
 ;   (STATEMENT_VAR (IDENTIFIER "i" "i" 1) (LITERAL_EXP 0))

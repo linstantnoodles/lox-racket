@@ -123,6 +123,24 @@
 
   (define (evaluate-variable exp env) (env-get env (cadr exp)))
 
+  (define (evaluate-get exp env)
+    (println exp))
+    
+  (define (evaluate-call exp env)
+    (let* (
+      [callee (evaluate (cadr exp) env)]
+      [type (car callee)]
+      )
+      (if (eq? type 'STATEMENT_CLASS)
+        (evaluate-class-instantiation callee env)
+        (evaluate-function-call callee env))))
+
+  (define (evaluate-class-instantiation exp env)
+    (let* (
+      [name (cadr exp)]
+      [functions (caddr exp)])
+        (list 'CLASS_INSTANCE name functions)))
+
   (define (evaluate-function-call exp env)
     (define (accumulate-arg-values values args)
       (if (empty? args)
@@ -138,6 +156,7 @@
         (begin
           (env-set! env first-param-name first-arg)
           (bind-params-to-args-in-env (cdr params) (cdr args) env)))))
+    (println (evaluate (cadr exp) env))
     (debug "evaluate-function-call==")
     (debug (list-ref (evaluate (cadr exp) env) 4))
     (let* (
@@ -184,6 +203,12 @@
       )
       (env-set! env name (lexical-statement-function exp env))))
 
+  (define (evaluate-statement-class-declaration exp env)
+    (let (
+      [name (cadr exp)]
+      )
+      (env-set! env name exp)))
+
   (define (evaluate-binary exp env)
     (let (
           [binary-value-left (evaluate (cadr exp) env)]
@@ -210,6 +235,7 @@
       (let ([type (car exp)])
         (cond
           [(equal? type 'STATEMENT_FUN) (evaluate-statement-fun-declaration exp env)]
+          [(equal? type 'STATEMENT_CLASS) (evaluate-statement-class-declaration exp env)]
           [(equal? type 'STATEMENT_IF) (evaluate-statement-if exp env)]
           [(equal? type 'STATEMENT_WHILE) (evaluate-statement-while exp env)]
           [(equal? type 'STATEMENT_BLOCK) (evaluate-statement-block exp env)] 
@@ -219,7 +245,8 @@
           [(equal? type 'STATEMENT_VAR) (evaluate-statement-var exp env)]
           [(equal? type 'ASSIGNMENT_EXP) (evaluate-assignment exp env)]
           [(equal? type 'VARIABLE_EXP) (evaluate-variable exp env)]
-          [(equal? type 'CALL_EXP) (evaluate-function-call exp env)]
+          [(equal? type 'CALL_EXP) (evaluate-call exp env)]
+          [(equal? type 'GET_EXP) (evaluate-get exp env)]
           [(equal? type 'LITERAL_EXP) (evaluate-literal exp env)]
           [(equal? type 'GROUP_EXP) (evaluate (cadr exp) env)]
           [(equal? type 'UNARY_EXP) (evaluate-unary exp env)]

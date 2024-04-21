@@ -15,6 +15,7 @@
 (define (literal-exp exp) (list 'LITERAL_EXP exp))
 (define (variable-exp exp) (list 'VARIABLE_EXP exp))
 (define (call-exp exp arguments) (list 'CALL_EXP exp arguments))
+(define (get-exp exp name) (list 'GET_EXP exp name))
 (define (assignment-exp name value) (list 'ASSIGNMENT_EXP name value))
 (define (statement-print exp) (list 'STATEMENT_PRINT exp))
 (define (statement-block exp) (list 'STATEMENT_BLOCK exp))
@@ -23,6 +24,7 @@
 (define (statement-return value) (list 'STATEMENT_RETURN value))
 (define (statement-if condition then-branch else-branch) (list 'STATEMENT_IF condition then-branch else-branch))
 (define (statement-function name param-list body) (list 'STATEMENT_FUN name param-list body))
+(define (statement-class name fun-list) (list 'STATEMENT_CLASS name fun-list))
 (define (statement-while condition body) (list 'STATEMENT_WHILE condition body))
 
 (define (parse src)
@@ -37,6 +39,7 @@
   (cond 
     [(match token-list (list 'VAR)) (var-declaration (cdr token-list))]
     [(match token-list (list 'FUN)) (fun-declaration (cdr token-list))]
+    [(match token-list (list 'CLASS)) (class-declaration (cdr token-list))]
     [else (statement token-list)]))
 
 (define (consume-parameter-list token-list)
@@ -51,9 +54,29 @@
     (values '() token-list)
     (accumulate-params (list (car token-list)) (cdr token-list))))
 
+(define (consume-function-list token-list)
+  (define (accumulate-functions fun-list rtokens)
+    (if (match rtokens (list 'RIGHT_BRACE))
+      (values fun-list rtokens)
+      (let-values ([(fn rtokens) (fun-declaration rtokens)])
+        (accumulate-functions (append fun-list (list fn)) rtokens))))
+  (if (match token-list (list 'RIGHT_BRACE))
+    (values '() token-list)
+    (accumulate-functions '() token-list)))
+
+(define (class-declaration tokens)
+  (let (
+      [rtokens (consume 'IDENTIFIER tokens "expect a class name")]
+      [name (car tokens)]
+    )
+    (let ([rtokens (consume 'LEFT_BRACE rtokens "expect '{' before class body")])
+      (let-values ([(fun-list rtokens) (consume-function-list rtokens)])
+        (let ([rtokens (consume 'RIGHT_BRACE rtokens "expect '}' after class body")])
+          (values (statement-class (cadr name) fun-list) rtokens))))))
+
 (define (fun-declaration tokens)
   (let (
-      [rtokens (consume 'IDENTIFIER tokens "expect a function name")]
+      [rtokens (consume 'IDENTIFIER tokens "expected a function name")]
       [name (car tokens)]
     )
     (let ([rtokens (consume 'LEFT_PAREN rtokens "expect '(' after function name")])
@@ -245,14 +268,13 @@
           (recur rtokens (binary-exp curr-expr operator right)))))
     (recur rtokens expr)))
 
-; unary → ( "!" | "-" ) unary | primary ;
+; unary → ( "!" | "-" ) unary | call ;
 (define (unary token-list)
   (if (match token-list (list 'MINUS 'BANG))
     (let-values (
       [(operator) (car token-list)]
-      [(right-expr rtokens) (unary (cdr token-list))]
-    )
-      (values (unary-exp operator right-expr) rtokens))
+      [(right-expr rtokens) (unary (cdr token-list))])
+        (values (unary-exp operator right-expr) rtokens))
     (call token-list)))
 
 (define (consume-arg-list token-list)
@@ -272,6 +294,7 @@
     (values '() token-list)
     (recur '() token-list)))
 
+; call → primary ( "(" arguments? ")" )* ;
 (define (call token-list)
   (define (recur callee tokens)
     (if (not (match tokens (list 'LEFT_PAREN)))
@@ -279,13 +302,23 @@
       (let-values ([(arguments rtokens) (consume-arg-list (cdr tokens))])
         (let ([rtokens (consume 'RIGHT_PAREN rtokens "expect ) after function args")])
           (recur (call-exp callee arguments) rtokens)))))
+
   ; bootstrap the initial callee
   (let-values ([(expr rtokens) (primary token-list)])
-    (if (match rtokens (list 'LEFT_PAREN))
-      (let-values ([(arguments rtokens) (consume-arg-list (cdr rtokens))])
-        (let ([rtokens (consume 'RIGHT_PAREN rtokens "expect ) after function args")])
-          (recur (call-exp expr arguments) rtokens)))
-      (values expr rtokens))))
+    (cond 
+      [
+        (match rtokens (list 'LEFT_PAREN))
+        (let-values ([(arguments rtokens) (consume-arg-list (cdr rtokens))])
+          (let ([rtokens (consume 'RIGHT_PAREN rtokens "expect ) after function args")])
+            (recur (call-exp expr arguments) rtokens)))
+      ]
+      [
+        (match rtokens (list 'DOT))
+        (let ([name (cadr rtokens)])
+          (let ([rtokens (consume 'IDENTIFIER (cdr rtokens) "expect property name after .")])
+            (recur (get-exp expr name) rtokens)))
+      ]
+      [else (values expr rtokens)])))
 
 ; reports the wrong line number... currently the line AFTER
 ; the bad toke
@@ -313,7 +346,9 @@
     [(match token-list (list 'LEFT_PAREN)) (let-values ([(expr rtokens) (expression (cdr token-list))])
                                                      (let ([rtokens (consume 'RIGHT_PAREN rtokens "expect ) after expression")])
                                                         (values (group-exp expr) rtokens)))]
-    [else (raise "expected a valid expression")]
+    [else (begin 
+      (println (car token-list))
+      (raise "expected a valid expression"))]
   )
 )
 
