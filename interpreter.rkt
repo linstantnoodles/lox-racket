@@ -64,8 +64,22 @@
       (cond 
         [(equal? operator-type 'MINUS) (- (evaluate unary-exp env))]
         [(equal? operator-type 'BANG) (not (evaluate unary-exp env))]
-        [else (raise ("Unrecognized unary operator"))]))
-  )
+        [else (raise ("Unrecognized unary operator"))])))
+
+  (define (evaluate-logical exp env)
+    (let* (
+          [left (cadr exp)]
+          [operator (caddr exp)]
+          [right (cadddr exp)])
+          (if (eq? operator 'OR)
+            (let ([left-value (evaluate left env)])
+              (if (eq? left-value #t)
+                left-value
+                (evaluate right env)))
+            (let ([left-value (evaluate left env)])
+              (if (eq? left-value #f)
+                left-value
+                (evaluate right env))))))
 
   (define (evaluate-statement-if exp env)
     (let (
@@ -246,6 +260,7 @@
           [(equal? type 'ASSIGNMENT_EXP) (evaluate-assignment exp env)]
           [(equal? type 'VARIABLE_EXP) (evaluate-variable exp env)]
           [(equal? type 'CALL_EXP) (evaluate-call exp env)]
+          [(equal? type 'LOGICAL_EXP) (evaluate-logical exp env)]
           [(equal? type 'GET_EXP) (evaluate-get exp env)]
           [(equal? type 'LITERAL_EXP) (evaluate-literal exp env)]
           [(equal? type 'GROUP_EXP) (evaluate (cadr exp) env)]

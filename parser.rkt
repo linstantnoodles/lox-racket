@@ -12,6 +12,7 @@
 (define (binary-exp exp-left operator exp-right) (list 'BINARY_EXP exp-left operator exp-right))
 (define (group-exp exp) (list 'GROUP_EXP exp))
 (define (unary-exp token exp) (list 'UNARY_EXP token exp))
+(define (logical-exp left operator right) (list 'LOGICAL_EXP left operator right)) ; operator is AND or OR
 (define (literal-exp exp) (list 'LITERAL_EXP exp))
 (define (variable-exp exp) (list 'VARIABLE_EXP exp))
 (define (call-exp exp arguments) (list 'CALL_EXP exp arguments))
@@ -198,21 +199,46 @@
         (let ([rtokens (consume 'SEMICOLON rtokens "expect ; after statement expression")])
                                                         (values (statement-exp expr) rtokens))))
 
-; expression     → equality ;
+; expression → equality ;
 (define (expression token-list)
     (debug "expression")
     (debug token-list)
     (let-values ([(expr rtokens) (assignment token-list)])
       (values expr rtokens)))
 
+; how do you know if, when parsing `x = 5`
+; if `x` is an L-value (storage location) or an R-value (evaluates into a value)?
+; the trick here is to proceed as if we're dealing w. an R-value
 (define (assignment token-list)
-    (let-values ([(expr rtokens) (equality token-list)])
-      (if (match rtokens (list 'EQUAL))
-        (let-values ([(value rtokens) (assignment (cdr rtokens))])
-          (if (eq? (car expr) 'VARIABLE_EXP)
-            (values (assignment-exp (cadr expr) value) rtokens)
-            (raise "invalid assignment target.")))
-        (values expr rtokens))))
+  (let-values ([(expr rtokens) (or-rule token-list)])
+    (if (match rtokens (list 'EQUAL))
+      (let-values ([(value rtokens) (assignment (cdr rtokens))])
+        (if (eq? (car expr) 'VARIABLE_EXP)
+          (values (assignment-exp (cadr expr) value) rtokens)
+          (raise "invalid assignment target.")))
+      (values expr rtokens))
+      ))
+
+; named or-rule to avoid shadowing built-in or function
+;logic_or  → logic_and ( "or" logic_and )* ;
+(define (or-rule token-list)
+  (define (recur expr tokens)
+    (if (not (match tokens (list 'OR)))
+      (values expr tokens)
+      (let-values ([(and-expr rtokens) (and-rule (cdr tokens))])
+        (recur (logical-exp expr 'OR and-expr) rtokens))))
+  (let-values ([(expr rtokens) (and-rule token-list)])
+    (recur expr rtokens)))
+
+; logic_and → equality ( "and" equality )* ;
+(define (and-rule token-list)
+  (define (recur expr tokens)
+    (if (not (match tokens (list 'AND)))
+      (values expr tokens)
+      (let-values ([(next-and rtokens) (equality (cdr tokens))])
+        (recur (logical-exp expr 'AND next-and) rtokens))))
+  (let-values ([(expr rtokens) (equality token-list)])
+    (recur expr rtokens)))
 
 ; equality       → comparison ( ( "!=" | "==" ) comparison )* ;
 (define (equality token-list)
@@ -295,13 +321,25 @@
     (recur '() token-list)))
 
 ; call → primary ( "(" arguments? ")" )* ;
+; todo: fix recur to handle repeating dots
 (define (call token-list)
   (define (recur callee tokens)
-    (if (not (match tokens (list 'LEFT_PAREN)))
+    (if (not (match tokens (list 'LEFT_PAREN 'DOT)))
       (values callee tokens)
-      (let-values ([(arguments rtokens) (consume-arg-list (cdr tokens))])
-        (let ([rtokens (consume 'RIGHT_PAREN rtokens "expect ) after function args")])
-          (recur (call-exp callee arguments) rtokens)))))
+      (cond 
+        [
+          (match tokens (list 'LEFT_PAREN))
+          (let-values ([(arguments rtokens) (consume-arg-list (cdr tokens))])
+            (let ([rtokens (consume 'RIGHT_PAREN rtokens "expect ) after function args")])
+              (recur (call-exp callee arguments) rtokens)))
+        ]
+        [
+          (match tokens (list 'DOT))
+          (let ([name (cadr tokens)])
+            (let ([rtokens (consume 'IDENTIFIER (cdr tokens) "expect property name after .")])
+              (recur (get-exp callee name) rtokens)))
+        ]
+        [else (raise "no tokens to consumed")])))
 
   ; bootstrap the initial callee
   (let-values ([(expr rtokens) (primary token-list)])
@@ -333,7 +371,7 @@
             (string-join
               (list
                 "line"
-                (number->string (get-token-line next-token)) ":" error-message (format "--- encountered type ~a" (car next-token)))))))))
+                (number->string (get-token-line next-token)) ":" error-message (format "--- found ~a instead" (car next-token)))))))))
 
 ; primary → NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" ;
 (define (primary token-list)

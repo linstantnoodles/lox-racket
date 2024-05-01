@@ -133,8 +133,9 @@
 
 ;(interpret "for (var i = 0; i < 10; i = i + 1) print(i);")
  
-(parse "class Jabba { foo() {print(1);}  bar() {}} var x = Jabba(); print(x); x.wow(2,3);")
-
+; (parse "class Jabba { foo() {print(1);}  bar() {}} var x = Jabba(); print(x); x.wow(2,3);")
+; (interpret "var x = true or false and false; print x;")
+(parse "breakfast.omelette.hey = true;")
 ; '(
 ;   (STATEMENT_VAR (IDENTIFIER "i" "i" 1) (LITERAL_EXP 0))
 ;   (STATEMENT_WHILE 
